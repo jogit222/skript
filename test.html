@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Skript Web Editor & Previewer</title>
+    <title>Skript IDE - Live Color Highlighting</title>
     <style>
         :root {
             --bg-color: #1e1e1e;
@@ -12,7 +12,7 @@
             --accent-color: #007acc;
             --error-color: #f48771;
             --success-color: #4ec9b0;
-            --console-bg: #101010; /* Darker for Minecraft chat feel */
+            --console-bg: #101010;
         }
 
         body {
@@ -33,7 +33,7 @@
             display: flex;
             flex-direction: column;
             border-right: 1px solid #333;
-            box-shadow: 2px 0 5px rgba(0,0,0,0.2);
+            z-index: 10; /* Keep sidebar above editor */
         }
 
         h2 { margin-top: 0; font-size: 1.2rem; color: #fff; margin-bottom: 15px; }
@@ -54,70 +54,87 @@
         .btn-secondary { background-color: #3c3c3c; }
         .btn-secondary:hover { background-color: #4c4c4c; }
 
-        /* Tools Section */
-        .tools-section {
-            margin-top: 20px;
-            padding-top: 20px;
-            border-top: 1px solid #444;
-        }
-        
-        .tools-section input {
-            width: 100%;
-            background: #111;
-            border: 1px solid #444;
-            color: white;
-            padding: 8px;
-            box-sizing: border-box;
-            border-radius: 4px;
-            margin-bottom: 10px;
-        }
-
-        /* Main Editor Area */
+        /* Main Content */
         .main-content {
             flex-grow: 1;
             display: flex;
             flex-direction: column;
         }
 
-        .editor-container {
+        /* EDITOR AREA - The Complex Part */
+        .editor-wrapper {
             flex-grow: 2;
-            position: relative;
+            position: relative; /* Anchor for absolute children */
             display: flex;
             background-color: var(--bg-color);
+            overflow: hidden; 
         }
 
-        /* Line Numbers */
         .line-numbers {
             width: 45px;
             background-color: var(--bg-color);
             text-align: right;
-            padding-top: 10px;
-            padding-right: 10px;
+            padding: 10px 10px 0 0;
             color: #858585;
             font-family: 'Consolas', 'Courier New', monospace;
             font-size: 14px;
-            line-height: 1.5;
+            line-height: 1.5; /* MUST MATCH TEXTAREA */
             border-right: 1px solid #333;
             user-select: none;
+            z-index: 5;
         }
 
-        /* Text Area */
-        textarea {
+        /* The container for the stacking trick */
+        .code-container {
+            position: relative;
             flex-grow: 1;
-            background-color: var(--bg-color);
-            color: var(--text-color);
-            border: none;
-            resize: none;
+            height: 100%;
+            overflow: hidden;
+        }
+
+        /* Common styles for both Backdrop and Textarea to ensure perfect alignment */
+        .editor-layer {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            margin: 0;
             padding: 10px;
+            border: none;
             font-family: 'Consolas', 'Courier New', monospace;
             font-size: 14px;
             line-height: 1.5;
-            outline: none;
-            white-space: pre;
-            overflow-y: scroll;
+            box-sizing: border-box;
+            white-space: pre; /* Skript usually doesn't wrap lines, but 'pre-wrap' if you prefer */
+            overflow: auto; 
         }
 
-        /* Console/Output Area */
+        /* The Background Layer (Shows Colors) */
+        #codeBackdrop {
+            z-index: 1;
+            color: var(--text-color);
+            pointer-events: none; /* Let clicks pass through to textarea */
+            background-color: var(--bg-color);
+        }
+
+        /* The Foreground Layer (Accepts Input) */
+        #codeEditor {
+            z-index: 2;
+            color: transparent; /* Text is invisible */
+            background: transparent;
+            caret-color: #fff; /* Cursor remains white */
+            outline: none;
+            resize: none;
+        }
+        
+        /* Selection color adjustment (invisible text selection is tricky) */
+        #codeEditor::selection {
+            background: rgba(255, 255, 255, 0.2);
+            color: transparent;
+        }
+
+        /* Console Area */
         .console {
             height: 200px;
             background-color: var(--console-bg);
@@ -126,29 +143,20 @@
             font-family: 'Consolas', 'Courier New', monospace;
             font-size: 13px;
             overflow-y: auto;
-            display: flex;
-            flex-direction: column;
+            z-index: 10;
         }
 
         .console-header {
             display: flex;
             justify-content: space-between;
-            align-items: center;
-            margin-bottom: 8px;
-            padding-bottom: 5px;
+            color: #888;
+            margin-bottom: 5px;
             border-bottom: 1px solid #333;
         }
-
-        .console-title { font-weight: bold; color: #aaa; }
-        .clear-console { color: #f48771; cursor: pointer; font-size: 0.8rem; }
-        .clear-console:hover { text-decoration: underline; }
-
-        .log-entry { margin: 2px 0; line-height: 1.4; }
-        .log-error { color: var(--error-color); background: rgba(244, 135, 113, 0.1); padding: 2px; }
-        .log-success { color: var(--success-color); }
-        .log-info { color: #888; }
         
-        /* Minecraft Color Classes */
+        .clear-console { cursor: pointer; color: #f48771; }
+
+        /* MINECRAFT COLORS (Applied in the backdrop) */
         .mc-0 { color: #000000; }
         .mc-1 { color: #0000AA; }
         .mc-2 { color: #00AA00; }
@@ -167,39 +175,25 @@
         .mc-f { color: #FFFFFF; }
         
         .mc-l { font-weight: bold; }
-        .mc-m { text-decoration: line-through; }
         .mc-n { text-decoration: underline; }
         .mc-o { font-style: italic; }
-        .mc-r { color: var(--text-color); font-weight: normal; text-decoration: none; font-style: normal; }
+        .mc-m { text-decoration: line-through; }
 
-        /* Preview Box specific styles */
-        .preview-output {
-            background: #000;
-            padding: 10px;
-            border: 1px solid #444;
-            min-height: 40px;
-            border-radius: 4px;
-            margin-bottom: 10px;
-            font-family: 'Consolas', monospace;
-        }
+        /* Syntax Keywords (Optional extra styling) */
+        .sk-keyword { color: #569cd6; font-weight: bold; }
+        .sk-string { color: #ce9178; }
+        .sk-variable { color: #9cdcfe; }
     </style>
 </head>
 <body>
 
     <div class="sidebar">
-        <h2>Skript IDE</h2>
-        <p style="font-size: 0.8rem; color: #888;">Write code, check syntax, and preview chat colors.</p>
+        <h2>Skript Editor</h2>
+        <p style="font-size: 0.8rem; color: #888;">Type color codes (e.g., &c, &l) and see them highlight instantly.</p>
         
-        <button class="btn" onclick="compileCode()">Analyze & Preview</button>
-        <button class="btn btn-secondary" onclick="downloadSkript()">Download .sk File</button>
-        <button class="btn btn-secondary" onclick="clearEditor()">Clear Editor</button>
-        
-        <div class="tools-section">
-            <div style="font-size: 0.9rem; font-weight: bold; color: #fff; margin-bottom: 5px;">Color Code Tester</div>
-            <div style="font-size: 0.75rem; color: #888; margin-bottom: 5px;">Type formatted text below:</div>
-            <input type="text" id="colorInput" placeholder="&cHello &bWorld" oninput="updatePreview(this.value)">
-            <div id="colorPreview" class="preview-output"></div>
-        </div>
+        <button class="btn" onclick="compileCode()">Analyze Syntax</button>
+        <button class="btn btn-secondary" onclick="downloadSkript()">Download .sk</button>
+        <button class="btn btn-secondary" onclick="clearEditor()">Clear</button>
 
         <div style="margin-top: auto; font-size: 0.8rem; color: #666;">
             <strong>Shortcuts:</strong><br>
@@ -209,233 +203,195 @@
     </div>
 
     <div class="main-content">
-        <div class="editor-container">
+        <div class="editor-wrapper">
             <div class="line-numbers" id="lineNumbers">1</div>
-            <textarea id="codeEditor" spellcheck="false" oninput="updateLineNumbers()" placeholder="command /hello:&#10;    trigger:&#10;        send &quot;&cHello &bPlayer!&quot; to player"></textarea>
+            
+            <div class="code-container">
+                <div id="codeBackdrop" class="editor-layer"></div>
+                
+                <textarea id="codeEditor" class="editor-layer" spellcheck="false" placeholder="command /test:&#10;    trigger:&#10;        send &quot;&cHello &bWorld!&quot;"></textarea>
+            </div>
         </div>
+
         <div class="console" id="consoleOutput">
             <div class="console-header">
-                <span class="console-title">GAME OUTPUT / CONSOLE</span>
+                <span>OUTPUT CONSOLE</span>
                 <span class="clear-console" onclick="clearConsole()">Clear</span>
             </div>
-            <div class="log-info">Ready. Click 'Analyze & Preview' to simulate 'send' commands.</div>
+            <div style="color: #666;">Ready...</div>
         </div>
     </div>
 
     <script>
         const editor = document.getElementById('codeEditor');
+        const backdrop = document.getElementById('codeBackdrop');
         const lineNumbers = document.getElementById('lineNumbers');
         const consoleOutput = document.getElementById('consoleOutput');
-        const previewBox = document.getElementById('colorPreview');
 
-        // --- 1. MINECRAFT COLOR PARSER ---
-        function parseMinecraftColors(text) {
-            if (!text) return '';
+        // --- 1. SYNC SCROLLING ---
+        // When user scrolls textarea, backdrop must follow exactly
+        editor.addEventListener('scroll', () => {
+            backdrop.scrollTop = editor.scrollTop;
+            backdrop.scrollLeft = editor.scrollLeft;
+        });
+
+        // --- 2. HIGHLIGHTING LOGIC ---
+        function updateHighlighting() {
+            let text = editor.value;
             
-            let html = '';
-            let isBold = false;
-            let isItalic = false;
-            let isUnderlined = false;
-            let isStrikethrough = false;
-            let currentColorClass = ''; // Default color
-
-            // Helper to get current style span
-            const getSpanStart = () => {
-                let classes = [];
-                if (currentColorClass) classes.push(currentColorClass);
-                if (isBold) classes.push('mc-l');
-                if (isItalic) classes.push('mc-o');
-                if (isUnderlined) classes.push('mc-n');
-                if (isStrikethrough) classes.push('mc-m');
-                
-                if (classes.length === 0) return '<span>';
-                return `<span class="${classes.join(' ')}">`;
-            };
-
-            const parts = text.split(/(&[0-9a-fk-or])/g); // Split by color codes
-
-            parts.forEach(part => {
-                if (part.startsWith('&') && part.length === 2) {
-                    const code = part[1].toLowerCase();
-                    // Color Codes
-                    if ('0123456789abcdef'.includes(code)) {
-                        currentColorClass = `mc-${code}`;
-                        // Reset formats when color changes (Minecraft behavior)
-                        // Note: In modern versions formatting might persist, but legacy resets usually.
-                        // We will assume standard legacy behavior (color resets formatting).
-                        isBold = false; 
-                        isItalic = false; 
-                        isUnderlined = false; 
-                        isStrikethrough = false;
-                    } 
-                    // Formatting Codes
-                    else if (code === 'l') isBold = true;
-                    else if (code === 'o') isItalic = true;
-                    else if (code === 'n') isUnderlined = true;
-                    else if (code === 'm') isStrikethrough = true;
-                    else if (code === 'r') {
-                        currentColorClass = '';
-                        isBold = false;
-                        isItalic = false;
-                        isUnderlined = false;
-                        isStrikethrough = false;
-                    }
-                } else {
-                    // It's text
-                    if (part.length > 0) {
-                        html += getSpanStart() + escapeHtml(part) + '</span>';
-                    }
-                }
-            });
-
-            return html;
-        }
-
-        function escapeHtml(text) {
-            return text
-                .replace(/&/g, "&amp;")
-                .replace(/</g, "&lt;")
-                .replace(/>/g, "&gt;")
-                .replace(/"/g, "&quot;")
-                .replace(/'/g, "&#039;");
-        }
-
-        // Live Preview for Sidebar Tool
-        function updatePreview(text) {
-            previewBox.innerHTML = parseMinecraftColors(text);
-        }
-
-
-        // --- 2. EDITOR LOGIC ---
-
-        function updateLineNumbers() {
-            const lines = editor.value.split('\n').length;
+            // 1. Update Line Numbers
+            const lines = text.split('\n').length;
             lineNumbers.innerHTML = Array(lines).fill(0).map((_, i) => i + 1).join('<br>');
-        }
 
-        function log(message, type = 'info', isHtml = false) {
-            const div = document.createElement('div');
-            div.className = `log-entry log-${type}`;
-            if (isHtml) {
-                div.innerHTML = `> ${message}`;
-            } else {
-                div.textContent = `> ${message}`;
+            // 2. Handle final newline for rendering consistency
+            if(text[text.length-1] === "\n") {
+                text += " "; 
             }
-            consoleOutput.appendChild(div);
-            consoleOutput.scrollTop = consoleOutput.scrollHeight;
+
+            // 3. Escape HTML (prevent XSS and broken rendering)
+            text = text.replace(/&/g, "&amp;")
+                       .replace(/</g, "&lt;")
+                       .replace(/>/g, "&gt;");
+
+            // 4. Apply Syntax Highlighting (Keywords)
+            // Note: This is a simple regex approach. 
+            // We highlight specific keywords BEFORE processing colors so colors layer on top if needed.
+            text = text.replace(/\b(command|trigger|if|else|loop|while|set|send|broadcast|to|player)\b/g, '<span class="sk-keyword">$1</span>');
+            
+            // 5. Apply Minecraft Color Codes
+            // We split by color codes and wrap segments
+            text = applyColorParsing(text);
+
+            backdrop.innerHTML = text;
         }
 
-        function clearConsole() {
-            // Keep the header, remove entries
-            const entries = consoleOutput.querySelectorAll('.log-entry');
-            entries.forEach(e => e.remove());
-        }
-
-        function clearEditor() {
-            if(confirm("Are you sure you want to clear your code?")) {
-                editor.value = '';
-                updateLineNumbers();
-                log("Editor cleared.", "info");
-            }
-        }
-
-        // --- 3. ANALYZER & PREVIEWER ---
-
-        function compileCode() {
-            clearConsole();
-            log("--- Syntax Analysis & Output Preview ---", "info");
-
-            const code = editor.value;
-            const lines = code.split('\n');
-            let errors = 0;
-            let indentationType = null;
-            let previousIndent = 0;
-            let expectedIndent = false;
-
-            lines.forEach((line, index) => {
-                const lineNum = index + 1;
-                const trimmed = line.trim();
-
-                // Skip checks for empty lines
-                if (trimmed === '' || trimmed.startsWith('#')) return;
-
-                // 1. Indentation Check
-                const leadingWhitespace = line.match(/^\s*/)[0];
-                const currentIndentCount = leadingWhitespace.length;
-                const isTab = leadingWhitespace.includes('\t');
-                const isSpace = leadingWhitespace.includes(' ');
-
-                if (currentIndentCount > 0) {
-                    if (isTab && isSpace) {
-                        log(`Line ${lineNum}: Mixed tabs and spaces.`, "error");
-                        errors++;
-                    } else if (!indentationType) {
-                        indentationType = isTab ? 'tab' : 'space';
-                    } else if ((indentationType === 'tab' && isSpace) || (indentationType === 'space' && isTab)) {
-                        log(`Line ${lineNum}: Inconsistent indentation.`, "error");
-                        errors++;
+        // Complex parsing logic to maintain state across a line
+        function applyColorParsing(htmlText) {
+            // This regex finds color codes like &a, &1, &l
+            // We must be careful not to break the HTML tags we just added for keywords.
+            // Strategy: We parse strictly for & codes.
+            
+            // Reset "htmlText" parsing slightly:
+            // The cleanest way in a simple editor is to tokenize by & code.
+            
+            const parts = htmlText.split(/(&amp;[0-9a-fk-or])/g); 
+            
+            let result = '';
+            let currentClasses = [];
+            
+            parts.forEach(part => {
+                if (part.match(/^&amp;[0-9a-fk-or]$/)) {
+                    // It's a color code
+                    const code = part.charAt(5).toLowerCase(); // get the char after &amp;
+                    
+                    if ('0123456789abcdef'.includes(code)) {
+                        // Reset formats, set color
+                        currentClasses = [`mc-${code}`];
+                    } else if (code === 'r') {
+                        currentClasses = []; // Reset
+                    } else {
+                        // Formats (l, n, o, m)
+                        if (code === 'l') currentClasses.push('mc-l');
+                        if (code === 'n') currentClasses.push('mc-n');
+                        if (code === 'o') currentClasses.push('mc-o');
+                        if (code === 'm') currentClasses.push('mc-m');
+                    }
+                    
+                    // Add the code itself, colored by the *new* active color
+                    // Or keep it plain? Skript editors usually color the code itself too.
+                    const classString = currentClasses.join(' ');
+                    result += `<span class="${classString}">${part}</span>`;
+                    
+                } else {
+                    // It's text. Wrap it in current classes.
+                    if (currentClasses.length > 0) {
+                        result += `<span class="${currentClasses.join(' ')}">${part}</span>`;
+                    } else {
+                        result += part;
                     }
                 }
-
-                // 2. Colon/Block Check
-                if (expectedIndent) {
-                    if (currentIndentCount <= previousIndent) {
-                        log(`Line ${lineNum}: Expected indentation after ':' on previous line.`, "error");
-                        errors++;
-                    }
-                    expectedIndent = false;
-                }
-                if (trimmed.endsWith(':')) expectedIndent = true;
-
-                // 3. GAME OUTPUT SIMULATION (The "Preview" Feature)
-                // We look for 'send', 'broadcast', or 'message' patterns
-                
-                // Regex to find: send "STRING" ...
-                // This is a basic regex, might not catch complex expressions, but works for literals
-                const sendMatch = line.match(/^\s*(?:send|broadcast|message)\s+"(.*?)"/);
-                
-                if (sendMatch) {
-                    const messageContent = sendMatch[1];
-                    const coloredHtml = parseMinecraftColors(messageContent);
-                    log(`[Simulated Chat] ${coloredHtml}`, "info", true);
-                }
-
-                // Update state for next line
-                previousIndent = currentIndentCount;
             });
-
-            log("----------------------------------------", "info");
-            if (errors === 0) {
-                log("Syntax check passed.", "success");
-            } else {
-                log(`Found ${errors} potential errors.`, "error");
-            }
+            
+            return result;
         }
 
-        function downloadSkript() {
-            const text = editor.value;
-            if (text.trim() === "") return;
-            const blob = new Blob([text], { type: "text/plain" });
-            const anchor = document.createElement("a");
-            anchor.download = "script.sk";
-            anchor.href = window.URL.createObjectURL(blob);
-            document.body.appendChild(anchor);
-            anchor.click();
-            document.body.removeChild(anchor);
-        }
-
-        // Initialize
-        updateLineNumbers();
+        // Bind input event
+        editor.addEventListener('input', updateHighlighting);
+        
         // Tab key support
         editor.addEventListener('keydown', function(e) {
             if (e.key == 'Tab') {
                 e.preventDefault();
                 const start = this.selectionStart;
                 const end = this.selectionEnd;
-                this.value = this.value.substring(0, start) + "    " + this.value.substring(end);
-                this.selectionStart = this.selectionEnd = start + 4;
+                // Insert 4 spaces
+                document.execCommand('insertText', false, '    '); 
+                // Using execCommand preserves undo history better than value manipulation
             }
         });
+
+        // Initialize on load
+        updateHighlighting();
+
+        // --- 3. STANDARD FUNCTIONS (Compile/Download) ---
+        function log(msg, type="info") {
+            const d = document.createElement('div');
+            d.style.color = type === 'error' ? '#f48771' : (type==='success'?'#4ec9b0':'#888');
+            d.innerHTML = `> ${msg}`;
+            consoleOutput.appendChild(d);
+            consoleOutput.scrollTop = consoleOutput.scrollHeight;
+        }
+
+        function clearConsole() {
+            consoleOutput.innerHTML = '<div class="console-header"><span>OUTPUT CONSOLE</span><span class="clear-console" onclick="clearConsole()">Clear</span></div>';
+        }
+
+        function clearEditor() {
+            if(confirm("Clear all code?")) {
+                editor.value = "";
+                updateHighlighting();
+            }
+        }
+
+        function downloadSkript() {
+            const text = editor.value;
+            if(!text.trim()) return;
+            const blob = new Blob([text], {type: "text/plain"});
+            const a = document.createElement("a");
+            a.href = URL.createObjectURL(blob);
+            a.download = "script.sk";
+            a.click();
+        }
+
+        function compileCode() {
+            clearConsole();
+            log("Analyzing Syntax...", "info");
+            const lines = editor.value.split('\n');
+            let errors = 0;
+            
+            lines.forEach((line, i) => {
+                const trim = line.trim();
+                if(!trim || trim.startsWith('#')) return;
+                
+                // Simple Tab check
+                if(line.startsWith('\t') && line.includes('    ')) {
+                    log(`Line ${i+1}: Mixed tabs and spaces!`, "error");
+                    errors++;
+                }
+                
+                // Colon check
+                if(trim.endsWith(':') && i < lines.length - 1) {
+                    const nextLine = lines[i+1];
+                    if(nextLine.trim() && nextLine.search(/\S/) <= line.search(/\S/)) {
+                        log(`Line ${i+2}: Expected indentation after ':'`, "error");
+                        errors++;
+                    }
+                }
+            });
+            
+            if(errors === 0) log("Syntax looks OK! Colors are visualized above.", "success");
+            else log(`Found ${errors} potential errors.`, "error");
+        }
     </script>
 </body>
 </html>
