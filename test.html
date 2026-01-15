@@ -1,0 +1,315 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Skript Web Editor & Validator</title>
+    <style>
+        :root {
+            --bg-color: #1e1e1e;
+            --sidebar-color: #252526;
+            --text-color: #d4d4d4;
+            --keyword-color: #569cd6;
+            --string-color: #ce9178;
+            --accent-color: #007acc;
+            --error-color: #f48771;
+            --success-color: #4ec9b0;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background-color: var(--bg-color);
+            color: var(--text-color);
+            margin: 0;
+            display: flex;
+            height: 100vh;
+            overflow: hidden;
+        }
+
+        /* Sidebar Styling */
+        .sidebar {
+            width: 250px;
+            background-color: var(--sidebar-color);
+            padding: 20px;
+            display: flex;
+            flex-direction: column;
+            border-right: 1px solid #333;
+        }
+
+        h2 { margin-top: 0; font-size: 1.2rem; color: #fff; }
+        
+        .btn {
+            background-color: var(--accent-color);
+            color: white;
+            border: none;
+            padding: 10px;
+            margin-bottom: 10px;
+            cursor: pointer;
+            border-radius: 4px;
+            font-weight: bold;
+            transition: background 0.2s;
+        }
+
+        .btn:hover { background-color: #005f9e; }
+        .btn-secondary { background-color: #3c3c3c; }
+        .btn-secondary:hover { background-color: #4c4c4c; }
+
+        /* Main Editor Area */
+        .main-content {
+            flex-grow: 1;
+            display: flex;
+            flex-direction: column;
+        }
+
+        .editor-container {
+            flex-grow: 2;
+            position: relative;
+            display: flex;
+        }
+
+        /* Line Numbers */
+        .line-numbers {
+            width: 40px;
+            background-color: var(--bg-color);
+            text-align: right;
+            padding-top: 10px;
+            padding-right: 10px;
+            color: #858585;
+            font-family: 'Consolas', 'Courier New', monospace;
+            font-size: 14px;
+            line-height: 1.5;
+            border-right: 1px solid #333;
+            user-select: none;
+        }
+
+        /* Text Area */
+        textarea {
+            flex-grow: 1;
+            background-color: var(--bg-color);
+            color: var(--text-color);
+            border: none;
+            resize: none;
+            padding: 10px;
+            font-family: 'Consolas', 'Courier New', monospace;
+            font-size: 14px;
+            line-height: 1.5;
+            outline: none;
+            white-space: pre;
+            overflow-y: scroll; /* Allow scrolling */
+        }
+
+        /* Console/Output Area */
+        .console {
+            height: 150px;
+            background-color: var(--sidebar-color);
+            border-top: 1px solid #333;
+            padding: 10px;
+            font-family: 'Consolas', 'Courier New', monospace;
+            font-size: 12px;
+            overflow-y: auto;
+        }
+
+        .console-title {
+            font-weight: bold;
+            color: #888;
+            margin-bottom: 5px;
+            display: block;
+        }
+
+        .log-entry { margin: 2px 0; }
+        .log-error { color: var(--error-color); }
+        .log-success { color: var(--success-color); }
+        .log-info { color: #888; }
+
+    </style>
+</head>
+<body>
+
+    <div class="sidebar">
+        <h2>Skript IDE</h2>
+        <p style="font-size: 0.8rem; color: #888;">Write your code and check for syntax errors.</p>
+        <button class="btn" onclick="compileCode()">Analyze Syntax</button>
+        <button class="btn btn-secondary" onclick="downloadSkript()">Download .sk File</button>
+        <button class="btn btn-secondary" onclick="clearEditor()">Clear</button>
+        
+        <div style="margin-top: auto; font-size: 0.8rem; color: #666;">
+            <strong>Tips:</strong><br>
+            - Use 4 spaces or 1 tab (consistent)<br>
+            - End triggers with :<br>
+            - Variables look like {var}
+        </div>
+    </div>
+
+    <div class="main-content">
+        <div class="editor-container">
+            <div class="line-numbers" id="lineNumbers">1</div>
+            <textarea id="codeEditor" spellcheck="false" oninput="updateLineNumbers()" placeholder="command /hello:&#10;    trigger:&#10;        send &quot;Hello World!&quot; to player"></textarea>
+        </div>
+        <div class="console" id="consoleOutput">
+            <span class="console-title">OUTPUT CONSOLE</span>
+            <div class="log-info">Ready for input...</div>
+        </div>
+    </div>
+
+    <script>
+        const editor = document.getElementById('codeEditor');
+        const lineNumbers = document.getElementById('lineNumbers');
+        const consoleOutput = document.getElementById('consoleOutput');
+
+        // Update line numbers when typing
+        function updateLineNumbers() {
+            const lines = editor.value.split('\n').length;
+            lineNumbers.innerHTML = Array(lines).fill(0).map((_, i) => i + 1).join('<br>');
+        }
+
+        // Add logging functionality
+        function log(message, type = 'info') {
+            const div = document.createElement('div');
+            div.className = `log-entry log-${type}`;
+            div.textContent = `> ${message}`;
+            consoleOutput.appendChild(div);
+            consoleOutput.scrollTop = consoleOutput.scrollHeight;
+        }
+
+        // Clear console
+        function clearConsole() {
+            consoleOutput.innerHTML = '<span class="console-title">OUTPUT CONSOLE</span>';
+        }
+
+        // Clear editor
+        function clearEditor() {
+            if(confirm("Are you sure you want to clear your code?")) {
+                editor.value = '';
+                updateLineNumbers();
+                clearConsole();
+                log("Editor cleared.", "info");
+            }
+        }
+
+        // THE "COMPILER" LOGIC
+        function compileCode() {
+            clearConsole();
+            log("Starting syntax analysis...", "info");
+
+            const code = editor.value;
+            const lines = code.split('\n');
+            let errors = 0;
+            let warnings = 0;
+
+            // State tracking
+            let indentationType = null; // 'tab' or 'space'
+            let indentLevel = 0;
+            let previousIndent = 0;
+            let expectedIndent = false; // Expecting indent after a colon
+
+            lines.forEach((line, index) => {
+                const lineNum = index + 1;
+                const trimmed = line.trim();
+
+                // Skip empty lines or comments
+                if (trimmed === '' || trimmed.startsWith('#')) return;
+
+                // 1. Check Indentation Consistency
+                const leadingWhitespace = line.match(/^\s*/)[0];
+                const currentIndentCount = leadingWhitespace.length;
+
+                if (currentIndentCount > 0) {
+                    const isTab = leadingWhitespace.includes('\t');
+                    const isSpace = leadingWhitespace.includes(' ');
+
+                    if (isTab && isSpace) {
+                        log(`Error (Line ${lineNum}): Mixed tabs and spaces. Choose one.`, "error");
+                        errors++;
+                    } else if (indentationType === null) {
+                        indentationType = isTab ? 'tab' : 'space';
+                    } else {
+                        if ((indentationType === 'tab' && isSpace) || (indentationType === 'space' && isTab)) {
+                            log(`Error (Line ${lineNum}): Inconsistent indentation type. You started with ${indentationType}s.`, "error");
+                            errors++;
+                        }
+                    }
+                }
+
+                // 2. Check for colon logic (Block structure)
+                if (expectedIndent) {
+                    if (currentIndentCount <= previousIndent) {
+                        log(`Error (Line ${lineNum}): Expected indentation after the previous line ended with ':'`, "error");
+                        errors++;
+                    }
+                    expectedIndent = false;
+                }
+
+                if (trimmed.endsWith(':')) {
+                    expectedIndent = true;
+                }
+
+                // 3. Basic Syntax Checks
+                
+                // Command definition check
+                if (trimmed.startsWith('command') && !trimmed.startsWith('command /')) {
+                    log(`Warning (Line ${lineNum}): Commands usually start with a slash (e.g., 'command /test:').`, "error");
+                    warnings++;
+                }
+
+                // Variable check (basic)
+                if (trimmed.includes('{') && !trimmed.includes('}')) {
+                    log(`Error (Line ${lineNum}): Unclosed variable bracket '{'.`, "error");
+                    errors++;
+                }
+
+                // Percent signs for variables (older syntax or expressions)
+                if ((trimmed.match(/%/g) || []).length % 2 !== 0) {
+                    log(`Warning (Line ${lineNum}): Odd number of '%' signs. Are you missing a closing percent?`, "error");
+                    warnings++;
+                }
+
+                previousIndent = currentIndentCount;
+            });
+
+            // Final Report
+            if (errors === 0) {
+                log(`Analysis complete. 0 Errors, ${warnings} Warnings.`, "success");
+                log("Structure looks valid! (Note: Logic errors cannot be checked here)", "success");
+            } else {
+                log(`Analysis complete. ${errors} Errors found. Please fix them before using.`, "error");
+            }
+        }
+
+        // Download functionality
+        function downloadSkript() {
+            const text = editor.value;
+            if (text.trim() === "") {
+                log("Cannot download empty file.", "error");
+                return;
+            }
+            const blob = new Blob([text], { type: "text/plain" });
+            const anchor = document.createElement("a");
+            anchor.download = "script.sk";
+            anchor.href = window.URL.createObjectURL(blob);
+            anchor.target = "_blank";
+            anchor.style.display = "none"; // just to be safe!
+            document.body.appendChild(anchor);
+            anchor.click();
+            document.body.removeChild(anchor);
+            log("File downloaded as script.sk", "success");
+        }
+
+        // Initialize
+        updateLineNumbers();
+        // Allow tab key in textarea
+        editor.addEventListener('keydown', function(e) {
+            if (e.key == 'Tab') {
+                e.preventDefault();
+                var start = this.selectionStart;
+                var end = this.selectionEnd;
+
+                // Insert 4 spaces (standard for Skript)
+                this.value = this.value.substring(0, start) +
+                    "    " + this.value.substring(end);
+
+                this.selectionStart = this.selectionEnd = start + 4;
+            }
+        });
+    </script>
+</body>
+</html>
