@@ -3,17 +3,16 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Skript Web Editor & Validator</title>
+    <title>Skript Web Editor & Previewer</title>
     <style>
         :root {
             --bg-color: #1e1e1e;
             --sidebar-color: #252526;
             --text-color: #d4d4d4;
-            --keyword-color: #569cd6;
-            --string-color: #ce9178;
             --accent-color: #007acc;
             --error-color: #f48771;
             --success-color: #4ec9b0;
+            --console-bg: #101010; /* Darker for Minecraft chat feel */
         }
 
         body {
@@ -28,15 +27,16 @@
 
         /* Sidebar Styling */
         .sidebar {
-            width: 250px;
+            width: 280px;
             background-color: var(--sidebar-color);
             padding: 20px;
             display: flex;
             flex-direction: column;
             border-right: 1px solid #333;
+            box-shadow: 2px 0 5px rgba(0,0,0,0.2);
         }
 
-        h2 { margin-top: 0; font-size: 1.2rem; color: #fff; }
+        h2 { margin-top: 0; font-size: 1.2rem; color: #fff; margin-bottom: 15px; }
         
         .btn {
             background-color: var(--accent-color);
@@ -54,6 +54,24 @@
         .btn-secondary { background-color: #3c3c3c; }
         .btn-secondary:hover { background-color: #4c4c4c; }
 
+        /* Tools Section */
+        .tools-section {
+            margin-top: 20px;
+            padding-top: 20px;
+            border-top: 1px solid #444;
+        }
+        
+        .tools-section input {
+            width: 100%;
+            background: #111;
+            border: 1px solid #444;
+            color: white;
+            padding: 8px;
+            box-sizing: border-box;
+            border-radius: 4px;
+            margin-bottom: 10px;
+        }
+
         /* Main Editor Area */
         .main-content {
             flex-grow: 1;
@@ -65,11 +83,12 @@
             flex-grow: 2;
             position: relative;
             display: flex;
+            background-color: var(--bg-color);
         }
 
         /* Line Numbers */
         .line-numbers {
-            width: 40px;
+            width: 45px;
             background-color: var(--bg-color);
             text-align: right;
             padding-top: 10px;
@@ -95,59 +114,111 @@
             line-height: 1.5;
             outline: none;
             white-space: pre;
-            overflow-y: scroll; /* Allow scrolling */
+            overflow-y: scroll;
         }
 
         /* Console/Output Area */
         .console {
-            height: 150px;
-            background-color: var(--sidebar-color);
+            height: 200px;
+            background-color: var(--console-bg);
             border-top: 1px solid #333;
             padding: 10px;
             font-family: 'Consolas', 'Courier New', monospace;
-            font-size: 12px;
+            font-size: 13px;
             overflow-y: auto;
+            display: flex;
+            flex-direction: column;
         }
 
-        .console-title {
-            font-weight: bold;
-            color: #888;
-            margin-bottom: 5px;
-            display: block;
+        .console-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 8px;
+            padding-bottom: 5px;
+            border-bottom: 1px solid #333;
         }
 
-        .log-entry { margin: 2px 0; }
-        .log-error { color: var(--error-color); }
+        .console-title { font-weight: bold; color: #aaa; }
+        .clear-console { color: #f48771; cursor: pointer; font-size: 0.8rem; }
+        .clear-console:hover { text-decoration: underline; }
+
+        .log-entry { margin: 2px 0; line-height: 1.4; }
+        .log-error { color: var(--error-color); background: rgba(244, 135, 113, 0.1); padding: 2px; }
         .log-success { color: var(--success-color); }
         .log-info { color: #888; }
+        
+        /* Minecraft Color Classes */
+        .mc-0 { color: #000000; }
+        .mc-1 { color: #0000AA; }
+        .mc-2 { color: #00AA00; }
+        .mc-3 { color: #00AAAA; }
+        .mc-4 { color: #AA0000; }
+        .mc-5 { color: #AA00AA; }
+        .mc-6 { color: #FFAA00; }
+        .mc-7 { color: #AAAAAA; }
+        .mc-8 { color: #555555; }
+        .mc-9 { color: #5555FF; }
+        .mc-a { color: #55FF55; }
+        .mc-b { color: #55FFFF; }
+        .mc-c { color: #FF5555; }
+        .mc-d { color: #FF55FF; }
+        .mc-e { color: #FFFF55; }
+        .mc-f { color: #FFFFFF; }
+        
+        .mc-l { font-weight: bold; }
+        .mc-m { text-decoration: line-through; }
+        .mc-n { text-decoration: underline; }
+        .mc-o { font-style: italic; }
+        .mc-r { color: var(--text-color); font-weight: normal; text-decoration: none; font-style: normal; }
 
+        /* Preview Box specific styles */
+        .preview-output {
+            background: #000;
+            padding: 10px;
+            border: 1px solid #444;
+            min-height: 40px;
+            border-radius: 4px;
+            margin-bottom: 10px;
+            font-family: 'Consolas', monospace;
+        }
     </style>
 </head>
 <body>
 
     <div class="sidebar">
         <h2>Skript IDE</h2>
-        <p style="font-size: 0.8rem; color: #888;">Write your code and check for syntax errors.</p>
-        <button class="btn" onclick="compileCode()">Analyze Syntax</button>
-        <button class="btn btn-secondary" onclick="downloadSkript()">Download .sk File</button>
-        <button class="btn btn-secondary" onclick="clearEditor()">Clear</button>
+        <p style="font-size: 0.8rem; color: #888;">Write code, check syntax, and preview chat colors.</p>
         
+        <button class="btn" onclick="compileCode()">Analyze & Preview</button>
+        <button class="btn btn-secondary" onclick="downloadSkript()">Download .sk File</button>
+        <button class="btn btn-secondary" onclick="clearEditor()">Clear Editor</button>
+        
+        <div class="tools-section">
+            <div style="font-size: 0.9rem; font-weight: bold; color: #fff; margin-bottom: 5px;">Color Code Tester</div>
+            <div style="font-size: 0.75rem; color: #888; margin-bottom: 5px;">Type formatted text below:</div>
+            <input type="text" id="colorInput" placeholder="&cHello &bWorld" oninput="updatePreview(this.value)">
+            <div id="colorPreview" class="preview-output"></div>
+        </div>
+
         <div style="margin-top: auto; font-size: 0.8rem; color: #666;">
-            <strong>Tips:</strong><br>
-            - Use 4 spaces or 1 tab (consistent)<br>
-            - End triggers with :<br>
-            - Variables look like {var}
+            <strong>Shortcuts:</strong><br>
+            &0-9, &a-f : Colors<br>
+            &l : Bold | &n : Underline
         </div>
     </div>
 
     <div class="main-content">
         <div class="editor-container">
             <div class="line-numbers" id="lineNumbers">1</div>
-            <textarea id="codeEditor" spellcheck="false" oninput="updateLineNumbers()" placeholder="command /hello:&#10;    trigger:&#10;        send &quot;Hello World!&quot; to player"></textarea>
+            <textarea id="codeEditor" spellcheck="false" oninput="updateLineNumbers()" placeholder="command /hello:&#10;    trigger:&#10;        send &quot;&cHello &bPlayer!&quot; to player"></textarea>
         </div>
         <div class="console" id="consoleOutput">
-            <span class="console-title">OUTPUT CONSOLE</span>
-            <div class="log-info">Ready for input...</div>
+            <div class="console-header">
+                <span class="console-title">GAME OUTPUT / CONSOLE</span>
+                <span class="clear-console" onclick="clearConsole()">Clear</span>
+            </div>
+            <div class="log-info">Ready. Click 'Analyze & Preview' to simulate 'send' commands.</div>
         </div>
     </div>
 
@@ -155,158 +226,213 @@
         const editor = document.getElementById('codeEditor');
         const lineNumbers = document.getElementById('lineNumbers');
         const consoleOutput = document.getElementById('consoleOutput');
+        const previewBox = document.getElementById('colorPreview');
 
-        // Update line numbers when typing
+        // --- 1. MINECRAFT COLOR PARSER ---
+        function parseMinecraftColors(text) {
+            if (!text) return '';
+            
+            let html = '';
+            let isBold = false;
+            let isItalic = false;
+            let isUnderlined = false;
+            let isStrikethrough = false;
+            let currentColorClass = ''; // Default color
+
+            // Helper to get current style span
+            const getSpanStart = () => {
+                let classes = [];
+                if (currentColorClass) classes.push(currentColorClass);
+                if (isBold) classes.push('mc-l');
+                if (isItalic) classes.push('mc-o');
+                if (isUnderlined) classes.push('mc-n');
+                if (isStrikethrough) classes.push('mc-m');
+                
+                if (classes.length === 0) return '<span>';
+                return `<span class="${classes.join(' ')}">`;
+            };
+
+            const parts = text.split(/(&[0-9a-fk-or])/g); // Split by color codes
+
+            parts.forEach(part => {
+                if (part.startsWith('&') && part.length === 2) {
+                    const code = part[1].toLowerCase();
+                    // Color Codes
+                    if ('0123456789abcdef'.includes(code)) {
+                        currentColorClass = `mc-${code}`;
+                        // Reset formats when color changes (Minecraft behavior)
+                        // Note: In modern versions formatting might persist, but legacy resets usually.
+                        // We will assume standard legacy behavior (color resets formatting).
+                        isBold = false; 
+                        isItalic = false; 
+                        isUnderlined = false; 
+                        isStrikethrough = false;
+                    } 
+                    // Formatting Codes
+                    else if (code === 'l') isBold = true;
+                    else if (code === 'o') isItalic = true;
+                    else if (code === 'n') isUnderlined = true;
+                    else if (code === 'm') isStrikethrough = true;
+                    else if (code === 'r') {
+                        currentColorClass = '';
+                        isBold = false;
+                        isItalic = false;
+                        isUnderlined = false;
+                        isStrikethrough = false;
+                    }
+                } else {
+                    // It's text
+                    if (part.length > 0) {
+                        html += getSpanStart() + escapeHtml(part) + '</span>';
+                    }
+                }
+            });
+
+            return html;
+        }
+
+        function escapeHtml(text) {
+            return text
+                .replace(/&/g, "&amp;")
+                .replace(/</g, "&lt;")
+                .replace(/>/g, "&gt;")
+                .replace(/"/g, "&quot;")
+                .replace(/'/g, "&#039;");
+        }
+
+        // Live Preview for Sidebar Tool
+        function updatePreview(text) {
+            previewBox.innerHTML = parseMinecraftColors(text);
+        }
+
+
+        // --- 2. EDITOR LOGIC ---
+
         function updateLineNumbers() {
             const lines = editor.value.split('\n').length;
             lineNumbers.innerHTML = Array(lines).fill(0).map((_, i) => i + 1).join('<br>');
         }
 
-        // Add logging functionality
-        function log(message, type = 'info') {
+        function log(message, type = 'info', isHtml = false) {
             const div = document.createElement('div');
             div.className = `log-entry log-${type}`;
-            div.textContent = `> ${message}`;
+            if (isHtml) {
+                div.innerHTML = `> ${message}`;
+            } else {
+                div.textContent = `> ${message}`;
+            }
             consoleOutput.appendChild(div);
             consoleOutput.scrollTop = consoleOutput.scrollHeight;
         }
 
-        // Clear console
         function clearConsole() {
-            consoleOutput.innerHTML = '<span class="console-title">OUTPUT CONSOLE</span>';
+            // Keep the header, remove entries
+            const entries = consoleOutput.querySelectorAll('.log-entry');
+            entries.forEach(e => e.remove());
         }
 
-        // Clear editor
         function clearEditor() {
             if(confirm("Are you sure you want to clear your code?")) {
                 editor.value = '';
                 updateLineNumbers();
-                clearConsole();
                 log("Editor cleared.", "info");
             }
         }
 
-        // THE "COMPILER" LOGIC
+        // --- 3. ANALYZER & PREVIEWER ---
+
         function compileCode() {
             clearConsole();
-            log("Starting syntax analysis...", "info");
+            log("--- Syntax Analysis & Output Preview ---", "info");
 
             const code = editor.value;
             const lines = code.split('\n');
             let errors = 0;
-            let warnings = 0;
-
-            // State tracking
-            let indentationType = null; // 'tab' or 'space'
-            let indentLevel = 0;
+            let indentationType = null;
             let previousIndent = 0;
-            let expectedIndent = false; // Expecting indent after a colon
+            let expectedIndent = false;
 
             lines.forEach((line, index) => {
                 const lineNum = index + 1;
                 const trimmed = line.trim();
 
-                // Skip empty lines or comments
+                // Skip checks for empty lines
                 if (trimmed === '' || trimmed.startsWith('#')) return;
 
-                // 1. Check Indentation Consistency
+                // 1. Indentation Check
                 const leadingWhitespace = line.match(/^\s*/)[0];
                 const currentIndentCount = leadingWhitespace.length;
+                const isTab = leadingWhitespace.includes('\t');
+                const isSpace = leadingWhitespace.includes(' ');
 
                 if (currentIndentCount > 0) {
-                    const isTab = leadingWhitespace.includes('\t');
-                    const isSpace = leadingWhitespace.includes(' ');
-
                     if (isTab && isSpace) {
-                        log(`Error (Line ${lineNum}): Mixed tabs and spaces. Choose one.`, "error");
+                        log(`Line ${lineNum}: Mixed tabs and spaces.`, "error");
                         errors++;
-                    } else if (indentationType === null) {
+                    } else if (!indentationType) {
                         indentationType = isTab ? 'tab' : 'space';
-                    } else {
-                        if ((indentationType === 'tab' && isSpace) || (indentationType === 'space' && isTab)) {
-                            log(`Error (Line ${lineNum}): Inconsistent indentation type. You started with ${indentationType}s.`, "error");
-                            errors++;
-                        }
+                    } else if ((indentationType === 'tab' && isSpace) || (indentationType === 'space' && isTab)) {
+                        log(`Line ${lineNum}: Inconsistent indentation.`, "error");
+                        errors++;
                     }
                 }
 
-                // 2. Check for colon logic (Block structure)
+                // 2. Colon/Block Check
                 if (expectedIndent) {
                     if (currentIndentCount <= previousIndent) {
-                        log(`Error (Line ${lineNum}): Expected indentation after the previous line ended with ':'`, "error");
+                        log(`Line ${lineNum}: Expected indentation after ':' on previous line.`, "error");
                         errors++;
                     }
                     expectedIndent = false;
                 }
+                if (trimmed.endsWith(':')) expectedIndent = true;
 
-                if (trimmed.endsWith(':')) {
-                    expectedIndent = true;
-                }
-
-                // 3. Basic Syntax Checks
+                // 3. GAME OUTPUT SIMULATION (The "Preview" Feature)
+                // We look for 'send', 'broadcast', or 'message' patterns
                 
-                // Command definition check
-                if (trimmed.startsWith('command') && !trimmed.startsWith('command /')) {
-                    log(`Warning (Line ${lineNum}): Commands usually start with a slash (e.g., 'command /test:').`, "error");
-                    warnings++;
+                // Regex to find: send "STRING" ...
+                // This is a basic regex, might not catch complex expressions, but works for literals
+                const sendMatch = line.match(/^\s*(?:send|broadcast|message)\s+"(.*?)"/);
+                
+                if (sendMatch) {
+                    const messageContent = sendMatch[1];
+                    const coloredHtml = parseMinecraftColors(messageContent);
+                    log(`[Simulated Chat] ${coloredHtml}`, "info", true);
                 }
 
-                // Variable check (basic)
-                if (trimmed.includes('{') && !trimmed.includes('}')) {
-                    log(`Error (Line ${lineNum}): Unclosed variable bracket '{'.`, "error");
-                    errors++;
-                }
-
-                // Percent signs for variables (older syntax or expressions)
-                if ((trimmed.match(/%/g) || []).length % 2 !== 0) {
-                    log(`Warning (Line ${lineNum}): Odd number of '%' signs. Are you missing a closing percent?`, "error");
-                    warnings++;
-                }
-
+                // Update state for next line
                 previousIndent = currentIndentCount;
             });
 
-            // Final Report
+            log("----------------------------------------", "info");
             if (errors === 0) {
-                log(`Analysis complete. 0 Errors, ${warnings} Warnings.`, "success");
-                log("Structure looks valid! (Note: Logic errors cannot be checked here)", "success");
+                log("Syntax check passed.", "success");
             } else {
-                log(`Analysis complete. ${errors} Errors found. Please fix them before using.`, "error");
+                log(`Found ${errors} potential errors.`, "error");
             }
         }
 
-        // Download functionality
         function downloadSkript() {
             const text = editor.value;
-            if (text.trim() === "") {
-                log("Cannot download empty file.", "error");
-                return;
-            }
+            if (text.trim() === "") return;
             const blob = new Blob([text], { type: "text/plain" });
             const anchor = document.createElement("a");
             anchor.download = "script.sk";
             anchor.href = window.URL.createObjectURL(blob);
-            anchor.target = "_blank";
-            anchor.style.display = "none"; // just to be safe!
             document.body.appendChild(anchor);
             anchor.click();
             document.body.removeChild(anchor);
-            log("File downloaded as script.sk", "success");
         }
 
         // Initialize
         updateLineNumbers();
-        // Allow tab key in textarea
+        // Tab key support
         editor.addEventListener('keydown', function(e) {
             if (e.key == 'Tab') {
                 e.preventDefault();
-                var start = this.selectionStart;
-                var end = this.selectionEnd;
-
-                // Insert 4 spaces (standard for Skript)
-                this.value = this.value.substring(0, start) +
-                    "    " + this.value.substring(end);
-
+                const start = this.selectionStart;
+                const end = this.selectionEnd;
+                this.value = this.value.substring(0, start) + "    " + this.value.substring(end);
                 this.selectionStart = this.selectionEnd = start + 4;
             }
         });
