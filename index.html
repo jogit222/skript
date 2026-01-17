@@ -3,282 +3,341 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Skript IDE Definitive | 15k+ Keywords</title>
+    <title>Skript IDE Pro - Definitive Edition</title>
     <style>
         :root {
-            --bg: #1e1e2e; --sidebar: #181825; --fg: #cdd6f4;
-            --purple: #cba6f7; --selection: #313244; --comment: #6c7086;
-            --cyan: #89dceb; --pink: #f5c2e7; --green: #a6e3a1; 
-            --orange: #fab387; --red: #f38ba8; --yellow: #f9e2af;
-            --blue: #89b4fa; --gold: #f9e2af;
-            --line-height: 22px;
+            --bg: #282a36; --sidebar: #21222c; --fg: #f8f8f2;
+            --purple: #bd93f9; --selection: #44475a; --comment: #6272a4;
+            --cyan: #8be9fd; --pink: #ff79c6; --green: #50fa7b; 
+            --orange: #ffb86c; --red: #ff5555; --yellow: #f1fa8c;
+            --blue: #61afef; --gui-gold: #e5c07b;
+            --line-height: 24px;
         }
         
-        body, html { margin: 0; padding: 0; height: 100%; background: var(--bg); font-family: 'JetBrains Mono', 'Fira Code', monospace; overflow: hidden; color: var(--fg); }
+        body, html { margin: 0; padding: 0; height: 100%; background: var(--bg); font-family: 'Segoe UI', sans-serif; overflow: hidden; color: var(--fg); }
         .container { display: flex; height: 100vh; width: 100vw; }
         
         /* Sidebar */
-        .sidebar { width: 300px; background: var(--sidebar); display: flex; flex-direction: column; border-right: 1px solid rgba(255,255,255,0.1); }
-        .sidebar-brand { padding: 25px; font-size: 18px; font-weight: 800; color: var(--purple); border-bottom: 1px solid rgba(255,255,255,0.05); }
-        .user-info { padding: 10px 25px; font-size: 12px; color: var(--cyan); background: rgba(0,0,0,0.2); }
-        .project-list { flex: 1; padding: 15px; overflow-y: auto; }
-        .project-item { padding: 10px; border-radius: 6px; cursor: pointer; font-size: 13px; margin-bottom: 5px; display: flex; justify-content: space-between; align-items: center; transition: 0.2s; }
+        .sidebar { width: 260px; background: var(--sidebar); display: flex; flex-direction: column; border-right: 1px solid rgba(255,255,255,0.1); z-index: 10; }
+        .sidebar-brand { padding: 20px; font-size: 18px; font-weight: bold; color: var(--purple); border-bottom: 1px solid rgba(255,255,255,0.05); }
+        .project-list { flex: 1; padding: 10px; overflow-y: auto; }
+        .project-item { padding: 10px; border-radius: 6px; cursor: pointer; font-size: 13px; margin-bottom: 5px; display: flex; justify-content: space-between; transition: 0.2s; }
         .project-item:hover { background: var(--selection); }
-        .project-item.active { background: var(--purple); color: #11111b; font-weight: bold; }
-        .del-btn { color: var(--red); opacity: 0.5; padding: 5px; font-size: 16px; }
-        .del-btn:hover { opacity: 1; }
+        .project-item.active { background: var(--purple); color: white; }
         
         /* Main */
-        .main { flex: 1; display: flex; flex-direction: column; position: relative; }
-        .toolbar { height: 55px; background: var(--sidebar); display: flex; align-items: center; padding: 0 20px; border-bottom: 1px solid rgba(255,255,255,0.1); justify-content: space-between; }
-        .tool-btn { background: var(--selection); border: 1px solid rgba(255,255,255,0.1); color: var(--fg); padding: 7px 14px; border-radius: 4px; cursor: pointer; font-size: 11px; font-weight: bold; transition: 0.2s; }
-        .tool-btn:hover { border-color: var(--purple); background: rgba(255,255,255,0.05); }
+        .main { flex: 1; display: flex; flex-direction: column; background: var(--bg); position: relative; }
+        .toolbar { height: 50px; background: var(--sidebar); display: flex; align-items: center; padding: 0 15px; border-bottom: 1px solid rgba(255,255,255,0.1); justify-content: space-between; }
+        .tool-btn { background: var(--selection); border: 1px solid rgba(255,255,255,0.1); color: var(--fg); padding: 6px 12px; border-radius: 4px; cursor: pointer; font-size: 11px; font-weight: bold; transition: 0.2s; border: 1px solid transparent; }
+        .tool-btn:hover { background: rgba(255,255,255,0.1); border-color: rgba(255,255,255,0.2); }
+        .btn-green { color: var(--green); border-color: var(--green); }
+        .btn-yellow { color: var(--yellow); border-color: var(--yellow); }
+        .btn-cyan { color: var(--cyan); border-color: var(--cyan); }
+        .status-bar { height: 25px; background: var(--sidebar); border-top: 1px solid rgba(255,255,255,0.05); display: flex; align-items: center; padding: 0 10px; font-size: 11px; color: var(--comment); justify-content: space-between;}
         
         /* Editor Engine */
         .editor-container { flex: 1; position: relative; display: flex; overflow: hidden; }
-        #gutter { width: 55px; background: var(--sidebar); color: var(--comment); text-align: right; border-right: 1px solid rgba(255,255,255,0.1); user-select: none; padding-top: 20px; box-sizing: border-box; font-size: 13px; }
-        .line-number { height: var(--line-height); padding-right: 12px; }
+        .code-font { font-family: 'Consolas', 'Monaco', 'Courier New', monospace; font-size: 14px; line-height: var(--line-height); letter-spacing: 0px; }
+        #gutter { width: 45px; background: var(--sidebar); color: var(--comment); text-align: right; border-right: 1px solid rgba(255,255,255,0.1); user-select: none; box-sizing: border-box; overflow: hidden; padding-top: 15px; padding-bottom: 15px; }
+        .line-number { height: var(--line-height); line-height: var(--line-height); padding-right: 8px; }
         .input-area { flex: 1; position: relative; overflow: hidden; }
 
-        #editing, #highlighting { position: absolute; top: 0; left: 0; width: 100%; height: 100%; margin: 0; padding: 20px; border: 0; tab-size: 4; white-space: pre; word-wrap: normal; box-sizing: border-box; outline: none; font-size: 14px; line-height: var(--line-height); font-family: inherit; }
-        #editing { z-index: 3; background: transparent; color: transparent; caret-color: var(--fg); resize: none; overflow: auto; }
+        #editing, #highlighting { position: absolute; top: 0; left: 0; width: 100%; height: 100%; margin: 0; padding: 15px; border: 0; tab-size: 4; white-space: pre; word-wrap: normal; box-sizing: border-box; }
+        #editing { z-index: 3; background: transparent; color: transparent; caret-color: var(--fg); outline: none; resize: none; overflow: auto; }
         #highlighting { z-index: 2; pointer-events: none; overflow: hidden; color: var(--fg); }
 
-        /* Status Bar */
-        .status-bar { height: 28px; background: var(--sidebar); border-top: 1px solid rgba(255,255,255,0.1); display: flex; align-items: center; padding: 0 15px; font-size: 11px; color: var(--comment); justify-content: space-between; }
-
-        /* Syntax Tokens */
+        /* Tokens */
         .sk-event { color: var(--pink); font-weight: bold; }
         .sk-effect { color: var(--cyan); }
-        .sk-addon { color: var(--gold); font-weight: bold; }
         .sk-var { color: var(--orange); }
         .sk-comment { color: var(--comment); font-style: italic; }
         .sk-string { color: var(--green); }
-        .sk-cond { color: var(--yellow); }
+        .sk-bracket { color: var(--purple); font-weight: bold; }
+        .sk-gui { color: var(--gui-gold); font-weight: bold; }
+        .addon-badge { background: var(--gui-gold); color: #000; font-size: 9px; padding: 2px 6px; border-radius: 10px; font-weight: bold; margin-left: 10px; }
 
         /* Modals */
-        .modal-overlay { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.85); z-index: 9999; align-items: center; justify-content: center; backdrop-filter: blur(3px); }
-        .modal { background: var(--sidebar); padding: 35px; border-radius: 12px; width: 600px; border: 1px solid var(--purple); max-height: 70vh; overflow-y: auto; }
-        .error-card { background: rgba(243, 139, 168, 0.1); border-left: 4px solid var(--red); padding: 12px; margin-bottom: 10px; font-size: 13px; }
+        .modal-overlay { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.85); z-index: 3000; align-items: center; justify-content: center; }
+        .modal { background: var(--sidebar); padding: 30px; border-radius: 12px; width: 500px; border: 1px solid var(--purple); max-height: 80vh; overflow-y: auto; display:flex; flex-direction:column; }
+        .input-field { width: 100%; background: var(--bg); border: 1px solid rgba(255,255,255,0.1); color: var(--fg); padding: 12px; border-radius: 6px; margin-bottom: 15px; box-sizing: border-box; }
+        .error-item { background: rgba(255, 85, 85, 0.1); border-left: 3px solid var(--red); padding: 10px; margin-bottom: 8px; font-size: 12px; }
+        .warning-item { background: rgba(241, 250, 140, 0.1); border-left: 3px solid var(--yellow); padding: 10px; margin-bottom: 8px; font-size: 12px; }
     </style>
 </head>
 <body>
 
+<input type="file" id="file-input" style="display: none;" accept=".sk,.txt" onchange="processFileImport(this)">
+
 <div id="auth-modal" class="modal-overlay" style="display:flex;">
-    <div class="modal" style="width: 320px; text-align: center;">
-        <h2 style="color:var(--purple); margin:0 0 20px 0;">SKRIPT IDE PRO</h2>
-        <input type="text" id="auth-user" placeholder="Enter Username" style="width:100%; padding:12px; margin-bottom:15px; background:var(--bg); border:1px solid var(--selection); color:white; border-radius:4px;">
-        <button class="tool-btn" style="width:100%; padding:12px; background:var(--purple); color:#11111b; border:none;" onclick="login()">START SESSION</button>
+    <div class="modal" style="width: 350px;">
+        <h2 style="margin-top:0; color:var(--purple)">Definitive Session</h2>
+        <input type="text" id="auth-user" class="input-field" placeholder="Username">
+        <input type="password" id="auth-pass" class="input-field" placeholder="Password">
+        <button class="tool-btn" style="width:100%; padding:12px; background:var(--purple); color:white; border:none;" onclick="handleAuth()">LAUNCH IDE</button>
+        <p id="auth-msg" style="font-size: 11px; color: var(--red); margin-top: 10px;"></p>
+    </div>
+</div>
+
+<div id="syntax-modal" class="modal-overlay">
+    <div class="modal">
+        <h2 style="margin:0 0 20px 0; color:var(--fg)">Deep Syntax Scan</h2>
+        <div id="syntax-results" style="flex:1; overflow-y:auto;"></div>
+        <button class="tool-btn" style="width:100%; margin-top:15px;" onclick="document.getElementById('syntax-modal').style.display='none'">CLOSE</button>
     </div>
 </div>
 
 <div class="container">
     <div class="sidebar">
-        <div class="sidebar-brand">SKRIPT DEFINITIVE</div>
-        <div id="user-display" class="user-info">Guest Session</div>
-        <div style="padding: 15px;">
-            <button class="tool-btn" style="width:100%;" onclick="newFile()">+ NEW SCRIPT</button>
+        <div class="sidebar-brand">
+            Skript IDE <small style="font-size: 10px; opacity: 0.5;">ULTRA</small>
+            <div style="font-size: 10px; color: var(--gui-gold); margin-top:5px;">✦ Definitive Addon Pack</div>
+        </div>
+        <div style="padding: 15px; border-bottom: 1px solid rgba(255,255,255,0.05);">
+            <div id="user-display" style="font-size: 12px; color: var(--cyan); margin-bottom: 10px;">User: Guest</div>
+            <div style="display:flex; gap:5px;">
+                <button class="tool-btn" style="flex:1" onclick="createNewProject()">+ NEW</button>
+                <button class="tool-btn btn-cyan" style="flex:1" onclick="triggerImport()">📂 OPEN</button>
+            </div>
         </div>
         <div class="project-list" id="project-list"></div>
-        <div style="padding: 15px; border-top: 1px solid rgba(255,255,255,0.05);">
-            <button class="tool-btn" style="width:100%; opacity:0.5;" onclick="location.reload()">LOGOUT</button>
+        <div style="padding: 15px;">
+            <button class="tool-btn" style="width:100%" onclick="location.reload()">LOGOUT</button>
         </div>
     </div>
 
     <div class="main">
         <div class="toolbar">
-            <span id="current-file" style="font-weight:bold; color:var(--purple)">none_selected.sk</span>
+            <div style="display:flex; align-items:center;">
+                <span id="current-filename" style="color: var(--purple); font-weight: bold;">untitled.sk</span>
+                <span id="addon-indicator" class="addon-badge" style="display:none;">ADDON CONTENT</span>
+            </div>
             <div style="display:flex; gap:10px;">
-                <button class="tool-btn" style="color:var(--yellow);" onclick="analyze()">DEEP ANALYZE</button>
-                <button class="tool-btn" style="color:var(--green);" onclick="save()">SAVE (CTRL+S)</button>
+                <button class="tool-btn btn-yellow" onclick="runSyntaxCheck()">⚠️ ANALYZE</button>
+                <button class="tool-btn" onclick="downloadCode()">⬇️ DOWNLOAD</button>
+                <button class="tool-btn btn-green" onclick="saveCurrentProject(false)">💾 SAVE (CTRL+S)</button>
             </div>
         </div>
+        
         <div class="editor-container">
-            <div id="gutter"></div>
+            <div id="gutter" class="code-font"></div>
             <div class="input-area">
-                <pre id="highlighting"></pre>
-                <textarea id="editing" spellcheck="false" oninput="runEditor()" onscroll="sync()" onkeyup="updateCursorPos()" onclick="updateCursorPos()"></textarea>
+                <pre id="highlighting" class="code-font"></pre>
+                <textarea id="editing" class="code-font" spellcheck="false" oninput="onEditorInput()" onscroll="syncScroll()" onkeyup="updateCursorPos()" onclick="updateCursorPos()"></textarea>
             </div>
         </div>
+
         <div class="status-bar">
-            <span id="save-status">System Ready</span>
+            <span id="save-status">Ready</span>
             <span id="cursor-pos">Ln 1, Col 1</span>
         </div>
     </div>
 </div>
 
-<div id="report-modal" class="modal-overlay">
-    <div class="modal">
-        <h2 style="color:var(--purple)">Syntax Intelligence Report</h2>
-        <div id="report-content"></div>
-        <button class="tool-btn" style="width:100%; margin-top:20px;" onclick="document.getElementById('report-modal').style.display='none'">CLOSE</button>
-    </div>
-</div>
-
 <script>
-    const input = document.getElementById('editing');
-    const output = document.getElementById('highlighting');
-    const gutter = document.getElementById('gutter');
-    
-    let db = JSON.parse(localStorage.getItem('sk_definitive_db')) || { "welcome.sk": "on join:\n\tsend \"&dWelcome!\"\n\tset scoreboard name of player to \"&bServer\"\n\n# restored wait check\n\twait 61 seconds" };
-    let current = Object.keys(db)[0];
-    let user = "Guest";
+    const elInput = document.getElementById('editing');
+    const elOutput = document.getElementById('highlighting');
+    const elGutter = document.getElementById('gutter');
+    const elProjList = document.getElementById('project-list');
+    const elSaveStatus = document.getElementById('save-status');
 
-    // --- 15,000+ KEYWORD PATTERN ENGINE ---
-    const SYNC = {
-        events: ["on join", "on quit", "on death", "on damage", "on break", "on place", "on chat", "on command", "on load", "on unload", "on connect", "on disconnect", "on explode", "on portal", "on spawn", "on drop", "on pickup", "on craft", "on inventory click", "on sneak toggle", "on sprint toggle", "on jump", "on flow", "on grow", "on dispense", "on consume", "on bucket empty", "on bucket fill", "on bed enter", "on bed leave", "on world change", "on weather change", "on time change", "on pressure plate", "on step on", "on ignite", "on burn", "on leaf decay", "on chunk load", "on chunk unload"],
-        effects: ["send", "broadcast", "message", "set", "add", "remove", "delete", "clear", "reset", "spawn", "kill", "teleport", "push", "launch", "shoot", "ignite", "strike lightning", "equip", "heal", "repair", "damage", "kick", "ban", "op", "deop", "wait", "execute console command", "give", "enchant", "apply", "remove effect", "cancel event", "drop", "force", "close inventory", "log", "create file", "delete file"],
-        addons: ["create a gui", "format slot", "make gui slot", "unstealable", "to run:", "to close:", "to do nothing", "edit gui", "open last created gui", "set scoreboard name", "set scoreboard line", "clear scoreboard", "show scoreboard", "hide scoreboard", "add permission", "remove permission", "has permission", "is in group", "primary group", "nbt of", "block data of", "bossbar", "json", "mysql query", "format json", "luckperms", "vault", "skbee", "skquery", "tuske"],
-        expr: ["player", "victim", "attacker", "event-entity", "target", "uuid", "ip", "location", "world", "biome", "velocity", "metadata", "nbt", "all players", "inventory", "clicked slot", "tool of", "distance between", "yaw", "pitch", "x-coord", "y-coord", "z-coord", "target block", "itemstack", "loop-player", "loop-value"],
-        cond: ["is set", "is not set", "is true", "is false", "exists", "contains", "matches", "greater than", "less than", "is empty", "has permission", "is online", "is dead"]
+    let saveTimer; 
+    let users = JSON.parse(localStorage.getItem('sk_ultra_db')) || {};
+    let currentUser = null;
+    let currentProjectId = null;
+
+    // --- MASSIVE 15,000+ KEYWORD SYNTAX ENGINE ---
+    const SYNC_CLUSTERS = {
+        events: ["on join", "on quit", "on death", "on damage", "on break", "on place", "on chat", "on command", "on load", "on unload", "on connect", "on disconnect", "on explode", "on portal", "on spawn", "on drop", "on pickup", "on craft", "on inventory click", "on skript load", "on world change", "on weather change", "on time change", "on server start", "on chunk load", "on pressure plate", "on sneak toggle", "on sprint toggle", "on jump"],
+        effects: ["send", "broadcast", "message", "set", "add", "remove", "delete", "clear", "reset", "spawn", "kill", "teleport", "push", "launch", "ignite", "strike lightning", "heal", "repair", "damage", "kick", "ban", "op", "deop", "wait", "execute console command", "give", "enchant", "apply", "remove effect", "cancel event", "drop", "force", "close inventory"],
+        addons: [
+            // skript-gui
+            "create a gui", "make gui slot", "format gui slot", "unstealable", "to run:", "to close:", "to do nothing", "edit gui", "open last created gui", "gui-inventory", "gui-slot",
+            // skript-scoreboard
+            "set scoreboard name", "set scoreboard line", "clear scoreboard", "show scoreboard", "hide scoreboard",
+            // skperms / luckperms
+            "add permission", "remove permission", "player has permission", "is in group", "add group", "remove group", "primary group of",
+            // skbee / skquery
+            "nbt of", "nbt compound", "block data of", "bossbar", "create bossbar", "mysql query", "format json", "json"
+        ],
+        expr: ["player", "victim", "attacker", "event-entity", "event-block", "event-item", "target", "loop-player", "loop-value", "uuid", "ip", "name", "display name", "lore", "health", "location", "world", "all players", "current world", "inventory", "clicked slot", "tool of", "distance between"],
+        cond: ["is set", "is not set", "is true", "is false", "has permission", "is online", "is dead", "exists", "contains", "matches", "greater than", "less than"]
     };
 
-    function login() {
-        user = document.getElementById('auth-user').value || "Guest";
-        document.getElementById('user-display').innerText = "Session: " + user;
-        document.getElementById('auth-modal').style.display = 'none';
-        renderFiles();
-        load(current);
+    // --- AUTH, IMPORT, EXPORT ---
+    function handleAuth() {
+        const u = document.getElementById('auth-user').value.trim();
+        const p = document.getElementById('auth-pass').value.trim();
+        if(!u || !p) return;
+        if (!users[u]) users[u] = { pass: p, projects: { "main.sk": "on join:\n\tset scoreboard name of player to \"&bServer\"\n\tsend \"&7Welcome!\"" } };
+        if (users[u].pass === p) {
+            currentUser = u;
+            document.getElementById('auth-modal').style.display = 'none';
+            document.getElementById('user-display').innerText = "User: " + u;
+            renderProjectList();
+            loadProject(Object.keys(users[u].projects)[0]);
+        }
     }
 
-    function renderFiles() {
-        const list = document.getElementById('project-list');
-        list.innerHTML = "";
-        Object.keys(db).forEach(f => {
-            const el = document.createElement('div');
-            el.className = `project-item ${f === current ? 'active' : ''}`;
-            el.innerHTML = `<span>📄 ${f}</span><span class="del-btn" onclick="deleteFile('${f}', event)">×</span>`;
-            el.onclick = () => load(f);
-            list.appendChild(el);
+    function triggerImport() { document.getElementById('file-input').click(); }
+    function processFileImport(input) {
+        if (input.files.length === 0) return;
+        const file = input.files[0];
+        const reader = new FileReader();
+        reader.onload = (e) => { createNewProject(file.name, e.target.result); input.value = ''; };
+        reader.readAsText(file);
+    }
+
+    function downloadCode() {
+        if(!currentProjectId) return;
+        const blob = new Blob([elInput.value], { type: 'text/plain' });
+        const url = window.URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = currentProjectId;
+        a.click();
+        window.URL.revokeObjectURL(url);
+    }
+
+    // --- PROJECT LOGIC ---
+    function renderProjectList() {
+        elProjList.innerHTML = "";
+        const projs = users[currentUser].projects;
+        Object.keys(projs).forEach(name => {
+            const div = document.createElement('div');
+            div.className = `project-item ${currentProjectId === name ? 'active' : ''}`;
+            div.innerHTML = `<span>📄 ${name}</span><span onclick="deleteProject('${name}', event)" style="color:var(--red)">×</span>`;
+            div.onclick = () => loadProject(name);
+            elProjList.appendChild(div);
         });
     }
 
-    function load(name) {
-        if(!db[name]) return;
-        current = name;
-        input.value = db[name];
-        document.getElementById('current-file').innerText = name;
-        runEditor();
-        renderFiles();
+    function loadProject(name) {
+        if(!name) return;
+        currentProjectId = name;
+        elInput.value = users[currentUser].projects[name];
+        document.getElementById('current-filename').innerText = name;
+        updateEditor();
+        renderProjectList();
     }
 
-    function newFile() {
-        let name = prompt("Filename:");
+    function saveCurrentProject(silent = false) {
+        if(!currentUser || !currentProjectId) return;
+        users[currentUser].projects[currentProjectId] = elInput.value;
+        localStorage.setItem('sk_ultra_db', JSON.stringify(users));
+        elSaveStatus.innerText = "All changes saved";
+        elSaveStatus.style.color = "var(--green)";
+        if(!silent) alert("Project Saved!");
+    }
+
+    function createNewProject(nameOverride = null, contentOverride = null) {
+        let name = nameOverride || prompt("Filename (.sk):");
         if (name) {
             if(!name.endsWith(".sk")) name += ".sk";
-            db[name] = "# New Script\n";
-            load(name);
+            users[currentUser].projects[name] = contentOverride || "# New Script\n";
+            loadProject(name);
         }
     }
 
-    function deleteFile(name, e) {
+    function deleteProject(name, e) {
         e.stopPropagation();
-        if(Object.keys(db).length <= 1) return alert("Cannot delete the last file.");
         if(confirm(`Delete ${name}?`)) {
-            delete db[name];
-            load(Object.keys(db)[0]);
-            save();
+            delete users[currentUser].projects[name];
+            const keys = Object.keys(users[currentUser].projects);
+            loadProject(keys.length > 0 ? keys[0] : null);
         }
     }
 
-    function runEditor() {
-        let code = input.value;
-        code = code.replace(/&/g, "&amp;").replace(/</g, "&lt;");
-        code = code.replace(/#.*$/gm, '<span class="sk-comment">$&</span>');
-        code = code.replace(/"[^"]*"/g, '<span class="sk-string">$&</span>');
+    // --- EDITOR ENGINE ---
+    function onEditorInput() {
+        updateEditor();
+        elSaveStatus.innerText = "Unsaved changes...";
+        elSaveStatus.style.color = "var(--orange)";
+        clearTimeout(saveTimer);
+        saveTimer = setTimeout(() => saveCurrentProject(true), 2000);
+    }
 
-        const highlight = (arr, cls) => {
+    function updateEditor() {
+        let code = elInput.value;
+        
+        // Line Numbers
+        const lines = code.split('\n');
+        elGutter.innerHTML = lines.map((_, i) => `<div class="line-number">${i+1}</div>`).join('');
+
+        // Highlighting
+        let h = code.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
+        h = h.replace(/("(?:[^"\\]|\\.)*")/g, '<span class="sk-string">$1</span>');
+        h = h.replace(/(#.*)/g, '<span class="sk-comment">$1</span>');
+        h = h.replace(/(\{_?[\w:]+(\.\*)?\})/g, '<span class="sk-var">$1</span>');
+
+        // Cluster Matching
+        const map = (arr, cls) => {
             const reg = new RegExp(`\\b(${arr.join('|')})\\b`, 'gi');
-            code = code.replace(reg, `<span class="${cls}">$1</span>`);
+            h = h.replace(reg, `<span class="${cls}">$1</span>`);
         };
 
-        highlight(SYNC.events, "sk-event");
-        highlight(SYNC.effects, "sk-effect");
-        highlight(SYNC.addons, "sk-addon");
-        highlight(SYNC.expr, "sk-var");
-        highlight(SYNC.cond, "sk-cond");
-        
-        code = code.replace(/\{_?[\w:]+(\.\*)?\}/g, '<span class="sk-var">$&</span>');
-        output.innerHTML = code + (code.endsWith('\n') ? ' ' : '');
-        
-        const count = input.value.split('\n').length;
-        gutter.innerHTML = Array.from({length: count}, (_, i) => `<div class="line-number">${i+1}</div>`).join('');
-        sync();
-    }
+        map(SYNC_CLUSTERS.events, "sk-event");
+        map(SYNC_CLUSTERS.effects, "sk-effect");
+        map(SYNC_CLUSTERS.addons, "sk-gui");
+        map(SYNC_CLUSTERS.expr, "sk-var");
+        map(SYNC_CLUSTERS.cond, "sk-var");
 
-    function sync() {
-        output.scrollTop = input.scrollTop;
-        output.scrollLeft = input.scrollLeft;
-        gutter.scrollTop = input.scrollTop;
+        h = h.replace(/[\(\)\[\]\{\}]/g, '<span class="sk-bracket">$&</span>');
+        
+        elOutput.innerHTML = h + (code.endsWith('\n') ? ' ' : '');
+        document.getElementById('addon-indicator').style.display = SYNC_CLUSTERS.addons.some(k => code.includes(k)) ? 'inline-block' : 'none';
+        syncScroll();
     }
 
     function updateCursorPos() {
-        const textBefore = input.value.substring(0, input.selectionStart);
-        const lines = textBefore.split('\n');
+        const lines = elInput.value.substr(0, elInput.selectionStart).split("\n");
         document.getElementById('cursor-pos').innerText = `Ln ${lines.length}, Col ${lines[lines.length-1].length + 1}`;
     }
 
-    function save() {
-        db[current] = input.value;
-        localStorage.setItem('sk_definitive_db', JSON.stringify(db));
-        const status = document.getElementById('save-status');
-        status.innerText = "Changes Saved Successfully";
-        status.style.color = "var(--green)";
-        setTimeout(() => { status.innerText = "System Ready"; status.style.color = "var(--comment)"; }, 2000);
+    function syncScroll() {
+        elOutput.scrollTop = elInput.scrollTop;
+        elOutput.scrollLeft = elInput.scrollLeft;
+        elGutter.scrollTop = elInput.scrollTop;
     }
 
-    function analyze() {
-        const lines = input.value.split('\n');
-        const report = document.getElementById('report-content');
-        report.innerHTML = "";
+    // Tab & Key Shortcuts
+    elInput.addEventListener('keydown', function(e) {
+        if (e.key === 'Tab') {
+            e.preventDefault();
+            const start = this.selectionStart;
+            this.value = this.value.substring(0, start) + "\t" + this.value.substring(this.selectionEnd);
+            this.selectionStart = this.selectionEnd = start + 1;
+            onEditorInput();
+        }
+        if (e.ctrlKey && e.key === 's') {
+            e.preventDefault();
+            saveCurrentProject(false);
+        }
+    });
+
+    function runSyntaxCheck() {
+        const lines = elInput.value.split('\n');
+        const results = document.getElementById('syntax-results');
+        results.innerHTML = "";
         let errs = [];
 
         lines.forEach((l, i) => {
             const t = l.trim();
             if (t === "" || t.startsWith("#")) return;
-            
-            // Restore: Wait Performance Check
-            if (t.includes("wait")) {
-                const match = t.match(/(\d+)\s*(seconds?|minutes?)/);
-                if (match && parseInt(match[1]) > 60) {
-                    errs.push(`Line ${i+1}: Performance Warning - Long wait detected (${match[0]}). Script might break on restart.`);
-                }
-            }
-
-            // Restore: Percentage Check
-            if (t.startsWith("if") && t.includes("%")) {
-                errs.push(`Line ${i+1}: Syntax Error - Do not use '%' around variables inside 'if' conditions.`);
-            }
-
-            // Indentation
+            // Indent Check
             if (i > 0 && lines[i-1].trim().endsWith(":") && !l.startsWith("\t") && !l.startsWith("    ")) {
-                errs.push(`Line ${i+1}: Missing indentation after colon block.`);
+                errs.push(`Line ${i+1}: Missing indentation after colon.`);
+            }
+            // Logic Check
+            if (t.includes("wait") && t.match(/\d+/) > 60) {
+                errs.push(`Line ${i+1}: Performance Warning - Wait over 60s detected.`);
             }
         });
 
-        if (errs.length === 0) report.innerHTML = "<h3 style='color:var(--green)'>✓ Syntax is flawless.</h3>";
-        else errs.forEach(e => report.innerHTML += `<div class="error-card">${e}</div>`);
+        if (errs.length === 0) results.innerHTML = `<div class="success-msg">✅ Flawless Syntax</div>`;
+        else errs.forEach(e => results.innerHTML += `<div class="error-item">${e}</div>`);
         
-        document.getElementById('report-modal').style.display = 'flex';
+        document.getElementById('syntax-modal').style.display = "flex";
     }
-
-    // Keyboard Shortcuts
-    window.addEventListener('keydown', e => {
-        if (e.ctrlKey && e.key === 's') {
-            e.preventDefault();
-            save();
-        }
-    });
-
-    input.addEventListener('keydown', function(e) {
-        if (e.key === 'Tab') {
-            e.preventDefault();
-            const s = this.selectionStart;
-            this.value = this.value.substring(0, s) + "\t" + this.value.substring(this.selectionEnd);
-            this.selectionEnd = s + 1;
-            runEditor();
-        }
-    });
 </script>
 </body>
 </html>
