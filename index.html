@@ -3,313 +3,284 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Skript Web Editor & Validator</title>
+    <title>Skript IDE Pro - Context Aware</title>
     <style>
         :root {
-            --bg-color: #1e1e1e;
-            --sidebar-color: #252526;
-            --text-color: #d4d4d4;
-            --keyword-color: #569cd6;
-            --string-color: #ce9178;
-            --accent-color: #007acc;
-            --error-color: #f48771;
-            --success-color: #4ec9b0;
+            --bg: #282a36; --sidebar: #21222c; --fg: #f8f8f2;
+            --purple: #bd93f9; --selection: #44475a; --comment: #6272a4;
+            --cyan: #8be9fd; --pink: #ff79c6; --green: #50fa7b; 
+            --orange: #ffb86c; --red: #ff5555; --yellow: #f1fa8c;
+            --blue: #61afef; --gui-gold: #e5c07b;
+            --line-height: 24px;
         }
-
-        body {
-            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-            background-color: var(--bg-color);
-            color: var(--text-color);
-            margin: 0;
-            display: flex;
-            height: 100vh;
-            overflow: hidden;
-        }
-
-        /* Sidebar Styling */
-        .sidebar {
-            width: 250px;
-            background-color: var(--sidebar-color);
-            padding: 20px;
-            display: flex;
-            flex-direction: column;
-            border-right: 1px solid #333;
-        }
-
-        h2 { margin-top: 0; font-size: 1.2rem; color: #fff; }
         
-        .btn {
-            background-color: var(--accent-color);
-            color: white;
-            border: none;
-            padding: 10px;
-            margin-bottom: 10px;
-            cursor: pointer;
-            border-radius: 4px;
-            font-weight: bold;
-            transition: background 0.2s;
-        }
+        body, html { margin: 0; padding: 0; height: 100%; background: var(--bg); font-family: 'Segoe UI', sans-serif; overflow: hidden; color: var(--fg); }
+        .container { display: flex; height: 100vh; width: 100vw; }
+        
+        /* Sidebar */
+        .sidebar { width: 260px; background: var(--sidebar); display: flex; flex-direction: column; border-right: 1px solid rgba(255,255,255,0.1); z-index: 10; }
+        .sidebar-brand { padding: 20px; font-size: 18px; font-weight: bold; color: var(--purple); border-bottom: 1px solid rgba(255,255,255,0.05); }
+        .project-list { flex: 1; padding: 10px; overflow-y: auto; }
+        .project-item { padding: 10px; border-radius: 6px; cursor: pointer; font-size: 13px; margin-bottom: 5px; display: flex; justify-content: space-between; transition: 0.2s; }
+        .project-item:hover { background: var(--selection); }
+        .project-item.active { background: var(--purple); color: white; }
+        
+        /* Main */
+        .main { flex: 1; display: flex; flex-direction: column; background: var(--bg); position: relative; }
+        .toolbar { height: 50px; background: var(--sidebar); display: flex; align-items: center; padding: 0 15px; border-bottom: 1px solid rgba(255,255,255,0.1); justify-content: space-between; }
+        .tool-btn { background: var(--selection); border: 1px solid rgba(255,255,255,0.1); color: var(--fg); padding: 6px 12px; border-radius: 4px; cursor: pointer; font-size: 11px; font-weight: bold; transition: 0.2s; }
+        .tool-btn:hover { background: rgba(255,255,255,0.1); }
+        .btn-green { color: var(--green); border-color: var(--green); }
+        .btn-yellow { color: var(--yellow); border-color: var(--yellow); }
+        .btn-cyan { color: var(--cyan); border-color: var(--cyan); }
+        .status-bar { height: 25px; background: var(--sidebar); border-top: 1px solid rgba(255,255,255,0.05); display: flex; align-items: center; padding: 0 10px; font-size: 11px; color: var(--comment); justify-content: space-between;}
+        
+        /* EDITOR */
+        .editor-container { flex: 1; position: relative; display: flex; overflow: hidden; }
+        .code-font { font-family: 'Consolas', 'Monaco', 'Courier New', monospace; font-size: 14px; line-height: var(--line-height); }
+        #gutter { width: 45px; background: var(--sidebar); color: var(--comment); text-align: right; border-right: 1px solid rgba(255,255,255,0.1); user-select: none; padding-top: 15px; }
+        .line-number { height: var(--line-height); padding-right: 8px; }
+        .input-area { flex: 1; position: relative; overflow: hidden; }
 
-        .btn:hover { background-color: #005f9e; }
-        .btn-secondary { background-color: #3c3c3c; }
-        .btn-secondary:hover { background-color: #4c4c4c; }
+        #editing, #highlighting { position: absolute; top: 0; left: 0; width: 100%; height: 100%; margin: 0; padding: 15px; border: 0; tab-size: 4; white-space: pre; word-wrap: normal; box-sizing: border-box; }
+        #editing { z-index: 3; background: transparent; color: transparent; caret-color: var(--fg); outline: none; resize: none; overflow: auto; }
+        #highlighting { z-index: 2; pointer-events: none; overflow: hidden; color: var(--fg); }
 
-        /* Main Editor Area */
-        .main-content {
-            flex-grow: 1;
-            display: flex;
-            flex-direction: column;
-        }
+        /* Syntax Highlighting Tokens */
+        .sk-event { color: var(--pink); font-weight: bold; }
+        .sk-effect { color: var(--cyan); }
+        .sk-var { color: var(--orange); }
+        .sk-comment { color: var(--comment); font-style: italic; }
+        .sk-string { color: var(--green); }
+        .sk-bracket { color: var(--purple); }
 
-        .editor-container {
-            flex-grow: 2;
-            position: relative;
-            display: flex;
-        }
-
-        /* Line Numbers */
-        .line-numbers {
-            width: 40px;
-            background-color: var(--bg-color);
-            text-align: right;
-            padding-top: 10px;
-            padding-right: 10px;
-            color: #858585;
-            font-family: 'Consolas', 'Courier New', monospace;
-            font-size: 14px;
-            line-height: 1.5;
-            border-right: 1px solid #333;
-            user-select: none;
-        }
-
-        /* Text Area */
-        textarea {
-            flex-grow: 1;
-            background-color: var(--bg-color);
-            color: var(--text-color);
-            border: none;
-            resize: none;
-            padding: 10px;
-            font-family: 'Consolas', 'Courier New', monospace;
-            font-size: 14px;
-            line-height: 1.5;
-            outline: none;
-            white-space: pre;
-            overflow-y: scroll; /* Allow scrolling */
-        }
-
-        /* Console/Output Area */
-        .console {
-            height: 150px;
-            background-color: var(--sidebar-color);
-            border-top: 1px solid #333;
-            padding: 10px;
-            font-family: 'Consolas', 'Courier New', monospace;
-            font-size: 12px;
-            overflow-y: auto;
-        }
-
-        .console-title {
-            font-weight: bold;
-            color: #888;
-            margin-bottom: 5px;
-            display: block;
-        }
-
-        .log-entry { margin: 2px 0; }
-        .log-error { color: var(--error-color); }
-        .log-success { color: var(--success-color); }
-        .log-info { color: #888; }
-
+        /* Modals */
+        .modal-overlay { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.85); z-index: 3000; align-items: center; justify-content: center; }
+        .modal { background: var(--sidebar); padding: 30px; border-radius: 12px; width: 600px; border: 1px solid var(--purple); max-height: 80vh; overflow-y: auto; display:flex; flex-direction:column; }
+        .input-field { width: 100%; background: var(--bg); border: 1px solid rgba(255,255,255,0.1); color: var(--fg); padding: 12px; border-radius: 6px; margin-bottom: 15px; }
+        .error-item { background: rgba(255, 85, 85, 0.1); border-left: 3px solid var(--red); padding: 10px; margin-bottom: 8px; font-size: 13px; }
+        .warning-item { background: rgba(241, 250, 140, 0.1); border-left: 3px solid var(--yellow); padding: 10px; margin-bottom: 8px; font-size: 13px; }
+        .success-msg { color: var(--green); text-align: center; padding: 20px; font-weight: bold; font-size: 18px; }
     </style>
 </head>
 <body>
 
+<div id="auth-modal" class="modal-overlay" style="display:flex;">
+    <div class="modal" style="width: 350px;">
+        <h2 style="margin-top:0; color:var(--purple)">Skript IDE Pro</h2>
+        <input type="text" id="auth-user" class="input-field" placeholder="Username">
+        <input type="password" id="auth-pass" class="input-field" placeholder="Password">
+        <button class="tool-btn" style="width:100%; padding:12px; background:var(--purple); color:white; border:none;" onclick="handleAuth()">ENTER WORKSPACE</button>
+    </div>
+</div>
+
+<div id="syntax-modal" class="modal-overlay">
+    <div class="modal">
+        <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:20px;">
+            <h2 style="margin:0;">Deep Syntax Analysis</h2>
+            <div id="syntax-score" style="font-weight:bold; color:var(--purple)"></div>
+        </div>
+        <div id="syntax-results" style="flex:1; overflow-y:auto;"></div>
+        <button class="tool-btn" style="width:100%; margin-top:15px;" onclick="document.getElementById('syntax-modal').style.display='none'">CLOSE</button>
+    </div>
+</div>
+
+<div class="container">
     <div class="sidebar">
-        <h2>Skript IDE</h2>
-        <p style="font-size: 0.8rem; color: #888;">Write your code and check for syntax errors.</p>
-        <button class="btn" onclick="compileCode()">Analyze Syntax</button>
-        <button class="btn btn-secondary" onclick="downloadSkript()">Download .sk File</button>
-        <button class="btn btn-secondary" onclick="clearEditor()">Clear</button>
+        <div class="sidebar-brand">Skript IDE <small style="font-size: 10px; opacity: 0.5;">PRO</small></div>
+        <div style="padding: 15px;">
+            <div id="user-display" style="font-size: 12px; color: var(--cyan); margin-bottom: 10px;">User: -</div>
+            <button class="tool-btn" style="width:100%" onclick="createNewProject()">+ NEW FILE</button>
+        </div>
+        <div class="project-list" id="project-list"></div>
+        <div style="padding: 15px;"><button class="tool-btn" style="width:100%" onclick="location.reload()">LOGOUT</button></div>
+    </div>
+
+    <div class="main">
+        <div class="toolbar">
+            <span id="current-filename" style="color: var(--purple); font-weight: bold;">No file open</span>
+            <div style="display:flex; gap:10px;">
+                <button class="tool-btn btn-yellow" onclick="runSyntaxCheck()">⚠️ DEEP CHECK</button>
+                <button class="tool-btn btn-green" onclick="saveCurrentProject()">💾 SAVE</button>
+            </div>
+        </div>
         
-        <div style="margin-top: auto; font-size: 0.8rem; color: #666;">
-            <strong>Tips:</strong><br>
-            - Use 4 spaces or 1 tab (consistent)<br>
-            - End triggers with :<br>
-            - Variables look like {var}
-        </div>
-    </div>
-
-    <div class="main-content">
         <div class="editor-container">
-            <div class="line-numbers" id="lineNumbers">1</div>
-            <textarea id="codeEditor" spellcheck="false" oninput="updateLineNumbers()" placeholder="command /hello:&#10;    trigger:&#10;        send &quot;Hello World!&quot; to player"></textarea>
+            <div id="gutter" class="code-font"></div>
+            <div class="input-area">
+                <pre id="highlighting" class="code-font"></pre>
+                <textarea id="editing" class="code-font" spellcheck="false" oninput="onEditorInput()" onscroll="syncScroll()"></textarea>
+            </div>
         </div>
-        <div class="console" id="consoleOutput">
-            <span class="console-title">OUTPUT CONSOLE</span>
-            <div class="log-info">Ready for input...</div>
+
+        <div class="status-bar">
+            <span id="save-status">Ready</span>
+            <span id="cursor-pos">Ln 1, Col 1</span>
         </div>
     </div>
+</div>
 
-    <script>
-        const editor = document.getElementById('codeEditor');
-        const lineNumbers = document.getElementById('lineNumbers');
-        const consoleOutput = document.getElementById('consoleOutput');
+<script>
+    const elInput = document.getElementById('editing');
+    const elOutput = document.getElementById('highlighting');
+    const elGutter = document.getElementById('gutter');
+    const elProjList = document.getElementById('project-list');
+    
+    let users = JSON.parse(localStorage.getItem('sk_pro_users')) || {};
+    let currentUser = null;
+    let currentProjectId = null;
+const syntaxDB = { // Terminal and Logic Flow terminalStatements: [ "stop", "return", "exit loop", "exit", "cancel event", "continue", "stop loop", "exit 2 loops", "exit 3 loops" ], // Comprehensive Event Contexts for the Syntax Engine eventContexts: { "on join:": ["player", "ip", "uuid", "event-world"], "on quit:": ["player", "ip", "uuid", "event-world"], "on death:": ["victim", "attacker", "damage cause", "event-world", "drops"], "on damage:": ["victim", "attacker", "damage", "damage cause", "projectile", "damage modifier"], "on break:": ["event-block", "player", "tool", "drops"], "on place:": ["event-block", "player", "tool"], "on rightclick:": ["event-block", "player", "tool", "clicked action"], "on leftclick:": ["event-block", "player", "tool", "clicked action"], "on chat:": ["player", "message", "recipients"], "on command:": ["player", "command", "arguments", "full command"], "on craft:": ["player", "event-item", "recipe"], "on pickup:": ["player", "event-item", "event-entity"], "on drop:": ["player", "event-item", "event-entity"] }, // Expanded Highlighting Library (Approx 500 Keywords) keywords: { events: [ "on join", "on quit", "on death", "on damage", "on break", "on place", "on chat", "on command", "on rightclick", "on leftclick", "on load", "on unload", "on connect", "on disconnect", "on death of", "on explode", "on portal", "on spawn", "on drop", "on pickup", "on craft", "on smelt", "on inventory click", "on inventory close", "on sneak toggle", "on sprint toggle", "on jump", "on flow", "on grow", "on dispense", "on consume", "on bucket empty", "on bucket fill", "on bed enter", "on bed leave", "on world change", "on weather change", "on time change", "on skript load", "on skript unload", "on tool change", "on swap hand", "on pressure plate", "on move", "on step on", "on ignite", "on burn", "on leaf decay", "on chunk load", "on chunk unload", "on packet" ], effects: [ "send", "broadcast", "message", "set", "add", "remove", "delete", "clear", "reset", "spawn", "kill", "teleport", "push", "launch", "shoot", "ignite", "strike lightning", "equip", "unequip", "heal", "repair", "damage", "kick", "ban", "op", "deop", "white-list", "un-white-list", "wait", "execute console command", "make player execute", "open gui", "close inventory", "drop", "give", "enchant", "disenchant", "apply", "remove effect", "create a gui", "format slot", "make gui slot", "unstealable", "cancel event", "allow fly", "disallow fly", "hide", "reveal", "show", "play sound", "play effect", "stop sound", "force", "set slot", "set line", "set name", "set lore", "add lore", "clear lore", "log", "download", "write", "create file", "delete file", "rename file", "copy file" ], expressions: [ "player", "victim", "attacker", "event-entity", "event-block", "event-item", "target", "target-entity", "loop-player", "loop-value", "loop-index", "uuid", "ip", "name", "display name", "tab list name", "lore", "enchantments", "level", "xp", "hunger", "food level", "saturation", "exhaust", "health", "max health", "location", "x-coord", "y-coord", "z-coord", "world", "biome", "distance between", "altitude", "yaw", "pitch", "velocity", "metadata", "nbt", "tags", "citizens", "last", "random", "all players", "all entities", "all worlds", "current world", "chunk", "inventory", "chestplate", "helmet", "leggings", "boots", "off-hand", "clicked slot", "clicked item", "cursor item", "clicked action", "hotbar slot", "tool of", "holding item", "permission", "prefix", "suffix" ], conditions: [ "is set", "is not set", "is true", "is false", "has permission", "is online", "is offline", "is dead", "is alive", "is swimming", "is sneaking", "is sprinting", "is flying", "exists", "contains", "starts with", "ends with", "is greater than", "is less than", "matches", "is wearing", "is holding", "is empty", "is not empty", "can fly", "is op", "is whitelisted", "is banned", "has metadata", "has nbt", "is burning", "is poisoned", "is frozen" ], types: [ "text", "number", "integer", "boolean", "player", "entity", "itemstack", "block", "location", "world", "timespan", "date", "offlineplayer", "color", "inventory", "entitytype", "blocktype", "enchantment", "potion effect type" ] } };
 
-        // Update line numbers when typing
-        function updateLineNumbers() {
-            const lines = editor.value.split('\n').length;
-            lineNumbers.innerHTML = Array(lines).fill(0).map((_, i) => i + 1).join('<br>');
+    // --- Auth & Data ---
+    function handleAuth() {
+        const u = document.getElementById('auth-user').value.trim();
+        const p = document.getElementById('auth-pass').value.trim();
+        if(!u || !p) return;
+        if (!users[u]) users[u] = { pass: p, projects: { "main.sk": "on join:\n\tsend \"Welcome!\"\n" } };
+        if (users[u].pass === p) {
+            currentUser = u;
+            document.getElementById('auth-modal').style.display = 'none';
+            document.getElementById('user-display').innerText = "User: " + u;
+            renderProjectList();
+            loadProject(Object.keys(users[u].projects)[0]);
         }
+    }
 
-        // Add logging functionality
-        function log(message, type = 'info') {
+    function renderProjectList() {
+        elProjList.innerHTML = "";
+        Object.keys(users[currentUser].projects).forEach(name => {
             const div = document.createElement('div');
-            div.className = `log-entry log-${type}`;
-            div.textContent = `> ${message}`;
-            consoleOutput.appendChild(div);
-            consoleOutput.scrollTop = consoleOutput.scrollHeight;
-        }
-
-        // Clear console
-        function clearConsole() {
-            consoleOutput.innerHTML = '<span class="console-title">OUTPUT CONSOLE</span>';
-        }
-
-        // Clear editor
-        function clearEditor() {
-            if(confirm("Are you sure you want to clear your code?")) {
-                editor.value = '';
-                updateLineNumbers();
-                clearConsole();
-                log("Editor cleared.", "info");
-            }
-        }
-
-        // THE "COMPILER" LOGIC
-        function compileCode() {
-            clearConsole();
-            log("Starting syntax analysis...", "info");
-
-            const code = editor.value;
-            const lines = code.split('\n');
-            let errors = 0;
-            let warnings = 0;
-
-            // State tracking
-            let indentationType = null; // 'tab' or 'space'
-            let indentLevel = 0;
-            let previousIndent = 0;
-            let expectedIndent = false; // Expecting indent after a colon
-
-            lines.forEach((line, index) => {
-                const lineNum = index + 1;
-                const trimmed = line.trim();
-
-                // Skip empty lines or comments
-                if (trimmed === '' || trimmed.startsWith('#')) return;
-
-                // 1. Check Indentation Consistency
-                const leadingWhitespace = line.match(/^\s*/)[0];
-                const currentIndentCount = leadingWhitespace.length;
-
-                if (currentIndentCount > 0) {
-                    const isTab = leadingWhitespace.includes('\t');
-                    const isSpace = leadingWhitespace.includes(' ');
-
-                    if (isTab && isSpace) {
-                        log(`Error (Line ${lineNum}): Mixed tabs and spaces. Choose one.`, "error");
-                        errors++;
-                    } else if (indentationType === null) {
-                        indentationType = isTab ? 'tab' : 'space';
-                    } else {
-                        if ((indentationType === 'tab' && isSpace) || (indentationType === 'space' && isTab)) {
-                            log(`Error (Line ${lineNum}): Inconsistent indentation type. You started with ${indentationType}s.`, "error");
-                            errors++;
-                        }
-                    }
-                }
-
-                // 2. Check for colon logic (Block structure)
-                if (expectedIndent) {
-                    if (currentIndentCount <= previousIndent) {
-                        log(`Error (Line ${lineNum}): Expected indentation after the previous line ended with ':'`, "error");
-                        errors++;
-                    }
-                    expectedIndent = false;
-                }
-
-                if (trimmed.endsWith(':')) {
-                    expectedIndent = true;
-                }
-
-                // 3. Basic Syntax Checks
-                
-                // Command definition check
-                if (trimmed.startsWith('command') && !trimmed.startsWith('command /')) {
-                    log(`Warning (Line ${lineNum}): Commands usually start with a slash (e.g., 'command /test:').`, "error");
-                    warnings++;
-                }
-
-                // Variable check (basic)
-                if (trimmed.includes('{') && !trimmed.includes('}')) {
-                    log(`Error (Line ${lineNum}): Unclosed variable bracket '{'.`, "error");
-                    errors++;
-                }
-
-                // Percent signs for variables (older syntax or expressions)
-                if ((trimmed.match(/%/g) || []).length % 2 !== 0) {
-                    log(`Warning (Line ${lineNum}): Odd number of '%' signs. Are you missing a closing percent?`, "error");
-                    warnings++;
-                }
-
-                previousIndent = currentIndentCount;
-            });
-
-            // Final Report
-            if (errors === 0) {
-                log(`Analysis complete. 0 Errors, ${warnings} Warnings.`, "success");
-                log("Structure looks valid! (Note: Logic errors cannot be checked here)", "success");
-            } else {
-                log(`Analysis complete. ${errors} Errors found. Please fix them before using.`, "error");
-            }
-        }
-
-        // Download functionality
-        function downloadSkript() {
-            const text = editor.value;
-            if (text.trim() === "") {
-                log("Cannot download empty file.", "error");
-                return;
-            }
-            const blob = new Blob([text], { type: "text/plain" });
-            const anchor = document.createElement("a");
-            anchor.download = "script.sk";
-            anchor.href = window.URL.createObjectURL(blob);
-            anchor.target = "_blank";
-            anchor.style.display = "none"; // just to be safe!
-            document.body.appendChild(anchor);
-            anchor.click();
-            document.body.removeChild(anchor);
-            log("File downloaded as script.sk", "success");
-        }
-
-        // Initialize
-        updateLineNumbers();
-        // Allow tab key in textarea
-        editor.addEventListener('keydown', function(e) {
-            if (e.key == 'Tab') {
-                e.preventDefault();
-                var start = this.selectionStart;
-                var end = this.selectionEnd;
-
-                // Insert 4 spaces (standard for Skript)
-                this.value = this.value.substring(0, start) +
-                    "    " + this.value.substring(end);
-
-                this.selectionStart = this.selectionEnd = start + 4;
-            }
+            div.className = `project-item ${currentProjectId === name ? 'active' : ''}`;
+            div.innerHTML = `<span>📄 ${name}</span>`;
+            div.onclick = () => loadProject(name);
+            elProjList.appendChild(div);
         });
-    </script>
+    }
+
+    function loadProject(name) {
+        currentProjectId = name;
+        elInput.value = users[currentUser].projects[name];
+        document.getElementById('current-filename').innerText = name;
+        updateEditor();
+        renderProjectList();
+    }
+
+    function saveCurrentProject() {
+        users[currentUser].projects[currentProjectId] = elInput.value;
+        localStorage.setItem('sk_pro_users', JSON.stringify(users));
+        document.getElementById('save-status').innerText = "Saved to LocalStorage";
+        setTimeout(() => document.getElementById('save-status').innerText = "All changes saved", 2000);
+    }
+
+    function createNewProject() {
+        let name = prompt("File Name:");
+        if (name) {
+            users[currentUser].projects[name] = "# New Skript\n";
+            loadProject(name);
+        }
+    }
+
+    // --- Editor Logic ---
+    function onEditorInput() {
+        updateEditor();
+        updateCursorPos();
+    }
+
+function updateEditor() { let code = elInput.value; code = code.replace(/&/g, "&amp;").replace(/</g, "&lt;"); // Highlight Comments and Strings first code = code.replace(/#.*$/gm, '<span class="sk-comment">$&</span>'); code = code.replace(/"[^"]*"/g, '<span class="sk-string">$&</span>'); // Dynamically build regex for the 500+ keywords const eventsRegex = new RegExp(`\\b(${syntaxDB.keywords.events.join('|')})\\b`, 'gi'); const effectsRegex = new RegExp(`\\b(${syntaxDB.keywords.effects.join('|')})\\b`, 'gi'); const exprRegex = new RegExp(`\\b(${syntaxDB.keywords.expressions.join('|')})\\b`, 'gi'); const condRegex = new RegExp(`\\b(${syntaxDB.keywords.conditions.join('|')})\\b`, 'gi'); code = code.replace(eventsRegex, '<span class="sk-event">$1</span>'); code = code.replace(effectsRegex, '<span class="sk-effect">$1</span>'); code = code.replace(exprRegex, '<span class="sk-var">$1</span>'); code = code.replace(condRegex, '<span class="sk-effect" style="color:var(--yellow)">$1</span>'); // Variables with bracket support code = code.replace(/\{_?\w+[^}]*\}/g, '<span class="sk-var">$&</span>'); elOutput.innerHTML = code + (code.endsWith('\n') ? ' ' : ''); const lines = elInput.value.split('\n').length; elGutter.innerHTML = Array.from({length: lines}, (_, i) => `<div class="line-number">${i+1}</div>`).join(''); syncScroll(); }
+    function syncScroll() {
+        elOutput.scrollTop = elInput.scrollTop;
+        elOutput.scrollLeft = elInput.scrollLeft;
+        elGutter.scrollTop = elInput.scrollTop;
+    }
+
+    function updateCursorPos() {
+        const textBefore = elInput.value.substring(0, elInput.selectionStart);
+        const lines = textBefore.split('\n');
+        document.getElementById('cursor-pos').innerText = `Ln ${lines.length}, Col ${lines[lines.length-1].length + 1}`;
+    }
+
+    // --- ADVANCED SYNTAX ENGINE ---
+    function runSyntaxCheck() {
+        const lines = elInput.value.split('\n');
+        const errors = []; const warnings = [];
+        let scopeStack = [{ type: 'root', indent: -1, context: null }];
+        let unreachable = false;
+
+        for (let i = 0; i < lines.length; i++) {
+            const rawLine = lines[i];
+            const trimmed = rawLine.trim();
+            const ln = i + 1;
+            if (trimmed === "" || trimmed.startsWith("#")) continue;
+
+            const currentIndent = rawLine.match(/^\s*/)[0].length;
+
+            // Scope Cleanup
+            while (scopeStack.length > 1 && currentIndent <= scopeStack[scopeStack.length - 1].indent) {
+                scopeStack.pop();
+                unreachable = false;
+            }
+
+            const parentScope = scopeStack[scopeStack.length - 1];
+
+            // 1. Logic Gotchas
+            if (/\bif\b.*%.*%/.test(trimmed)) {
+                warnings.push({line: ln, msg: "Don't use '%' around variables in 'if' statements."});
+            }
+
+            // 2. Context Validation
+            if (parentScope.context === "on join:") {
+                if (/\b(victim|attacker)\b/.test(trimmed)) {
+                    errors.push({line: ln, msg: "Cannot use 'victim/attacker' in a Join event."});
+                }
+            }
+
+            // 3. Unreachable Code
+            if (unreachable) {
+                warnings.push({line: ln, msg: "Unreachable code: Following a stop/return."});
+            }
+
+            // Update state
+            if (trimmed.endsWith(":")) {
+                scopeStack.push({ type: 'block', indent: currentIndent, context: trimmed.toLowerCase() });
+            }
+            if (syntaxDB.terminalStatements.some(t => trimmed.startsWith(t))) {
+                unreachable = true;
+            }
+
+            // Wait Performance
+            if (trimmed.includes("wait") && parseInt(trimmed.match(/\d+/)) > 60) {
+                warnings.push({line: ln, msg: "Long wait detected. Consider using metadata or variables instead."});
+            }
+        }
+
+        displayReport(errors, warnings);
+    }
+
+    function displayReport(errors, warnings) {
+        const res = document.getElementById('syntax-results');
+        const score = document.getElementById('syntax-score');
+        res.innerHTML = "";
+        document.getElementById('syntax-modal').style.display = 'flex';
+
+        if (errors.length === 0 && warnings.length === 0) {
+            res.innerHTML = '<div class="success-msg">✨ Syntax is Clean!</div>';
+            score.innerText = "SCORE: 100/100";
+        } else {
+            errors.forEach(e => res.innerHTML += `<div class="error-item"><b>Line ${e.line}:</b> ${e.msg}</div>`);
+            warnings.forEach(w => res.innerHTML += `<div class="warning-item"><b>Line ${w.line}:</b> ${w.msg}</div>`);
+            score.innerText = `SCORE: ${Math.max(0, 100 - (errors.length*20 + warnings.length*5))}/100`;
+        }
+    }
+
+    // Event Listeners
+    elInput.addEventListener('scroll', syncScroll);
+    elInput.addEventListener('keydown', function(e) {
+        if (e.key === 'Tab') {
+            e.preventDefault();
+            document.execCommand('insertText', false, "\t");
+        }
+    });
+</script>
 </body>
 </html>
+
