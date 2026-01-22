@@ -2,265 +2,335 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <title>Skript Ultra IDE + Highlighting</title>
+    <title>Skript IDE - FIXED</title>
     <style>
-        :root { 
-            --bg: #1e1e1e; 
-            --panel: #252526; 
-            --accent: #007acc; 
-            --text: #d4d4d4; 
-            --border: #3e3e42; 
-            --font-code: 'Consolas', 'Monaco', 'Courier New', monospace;
-        }
-        
+        :root { --bg: #1e1e1e; --panel: #252526; --accent: #007acc; --text: #d4d4d4; --border: #3e3e42; --font-code: 'Consolas', monospace; }
         * { box-sizing: border-box; }
-
         body { margin: 0; background: var(--bg); color: var(--text); font-family: 'Segoe UI', sans-serif; display: flex; flex-direction: column; height: 100vh; overflow: hidden; }
         
-        /* Header */
-        header { height: 40px; background: #333; display: flex; align-items: center; justify-content: space-between; padding: 0 15px; border-bottom: 1px solid var(--border); z-index: 10; }
-        .logo { font-weight: 800; color: #fff; letter-spacing: 1px; font-size: 14px; }
-        .logo span { color: var(--accent); }
-        .btn { background: var(--accent); color: white; border: none; padding: 5px 12px; border-radius: 2px; cursor: pointer; font-size: 12px; font-weight: 600; }
-        .btn:hover { filter: brightness(1.1); }
-        .btn-danger { background: #ce1212; }
-
-        /* Workspace Layout */
-        .workspace { display: flex; flex: 1; height: calc(100vh - 40px); }
+        /* HEADER */
+        header { height: 45px; background: #333; display: flex; align-items: center; justify-content: space-between; padding: 0 15px; border-bottom: 1px solid var(--border); }
+        .btn-group { display: flex; gap: 10px; }
+        button { background: #444; color: white; border: 1px solid #555; padding: 6px 12px; cursor: pointer; border-radius: 3px; font-size: 12px; font-weight: bold; }
+        button:hover { background: #555; }
+        button.primary { background: var(--accent); border-color: var(--accent); }
         
-        /* Sidebar (Explorer) */
-        .explorer { width: 220px; background: var(--panel); border-right: 1px solid var(--border); display: flex; flex-direction: column; }
-        .explorer-header { padding: 10px; font-size: 11px; font-weight: bold; text-transform: uppercase; display: flex; justify-content: space-between; color: #aaa; background: #2a2a2d; }
+        /* HIDDEN FILE INPUT */
+        #file-upload { display: none; }
+
+        /* MAIN LAYOUT */
+        .workspace { display: flex; flex: 1; height: calc(100vh - 45px); }
+        
+        /* SIDEBAR */
+        .sidebar { width: 220px; background: var(--panel); border-right: 1px solid var(--border); display: flex; flex-direction: column; }
+        .sidebar-header { padding: 10px; font-size: 11px; font-weight: bold; color: #aaa; text-transform: uppercase; display: flex; justify-content: space-between; align-items: center; }
         .file-list { flex: 1; overflow-y: auto; }
-        .file-item { padding: 4px 15px; cursor: pointer; font-size: 13px; display: flex; align-items: center; gap: 8px; color: #bbb; border-left: 2px solid transparent; }
-        .file-item:hover { background: #2a2d2e; color: #fff; }
-        .file-item.active { background: #37373d; border-left-color: var(--accent); color: #fff; }
+        .file-item { padding: 8px 15px; cursor: pointer; font-size: 13px; display: flex; align-items: center; gap: 8px; color: #ccc; }
+        .file-item:hover { background: #2a2d2e; color: white; }
+        .file-item.active { background: #37373d; border-left: 3px solid var(--accent); color: white; }
+
+        /* EDITOR (STACKED LAYERS) */
+        .editor-container { flex: 1; display: flex; flex-direction: column; position: relative; background: #1e1e1e; }
+        .tab-bar { padding: 8px 15px; background: #2d2d2d; font-size: 12px; color: #888; border-bottom: 1px solid var(--border); }
         
-        /* EDITOR CONTAINER (Complex Layering) */
-        .editor-area { flex: 1; display: flex; flex-direction: column; background: #1e1e1e; position: relative; min-width: 0; }
-        .tabs { height: 35px; background: #2d2d2d; display: flex; align-items: center; padding-left: 10px; font-size: 13px; color: #999; border-bottom: 1px solid var(--border); }
+        .code-wrapper { position: relative; flex: 1; overflow: hidden; }
         
-        /* The container for the layered editor */
-        .code-container {
-            position: relative;
-            flex: 1;
-            overflow: hidden; /* We scroll the inside elements */
+        /* Both layers must match perfectly */
+        .layer {
+            position: absolute; top: 0; left: 0; width: 100%; height: 100%;
+            margin: 0; padding: 20px; border: none;
+            font-family: var(--font-code); font-size: 14px; line-height: 1.5;
+            white-space: pre; overflow: auto; tab-size: 4;
+        }
+        
+        /* Bottom Layer: Colors */
+        #highlight-layer { z-index: 1; color: #d4d4d4; pointer-events: none; }
+        
+        /* Top Layer: Input */
+        #input-layer { 
+            z-index: 2; background: transparent; color: transparent; 
+            caret-color: white; outline: none; resize: none; 
         }
 
-        /* Common styles for both textarea and highlight layer */
-        .editor-layer {
-            position: absolute;
-            top: 0; left: 0;
-            width: 100%; height: 100%;
-            margin: 0; border: 0; padding: 15px;
-            font-family: var(--font-code);
-            font-size: 14px;
-            line-height: 1.5;
-            tab-size: 4;
-            white-space: pre;
-            overflow: auto;
-            word-wrap: normal;
-        }
-
-        /* Bottom Layer: The Syntax Highlighter */
-        #highlight-layer {
-            z-index: 1;
-            pointer-events: none; /* Let clicks pass through to textarea */
-            color: #d4d4d4; 
-        }
-
-        /* Top Layer: The Input */
-        #editor-input {
-            z-index: 2;
-            background: transparent;
-            color: transparent; /* Hide text, keep caret */
-            caret-color: #fff;  /* White cursor */
-            outline: none;
-            resize: none;
-        }
+        /* CONSOLE */
+        .console-panel { width: 30%; min-width: 300px; background: #101010; border-left: 1px solid var(--border); display: flex; flex-direction: column; }
+        .console-logs { flex: 1; padding: 10px; overflow-y: auto; font-family: var(--font-code); font-size: 12px; }
+        .log-entry { margin-bottom: 4px; word-wrap: break-word; }
+        .chat-input { padding: 10px; border-top: 1px solid var(--border); background: var(--panel); }
+        .chat-input input { width: 100%; background: #3c3c3c; border: 1px solid #555; padding: 8px; color: white; outline: none; border-radius: 3px; }
 
         /* Syntax Colors */
-        .token-keyword { color: #c586c0; font-weight: bold; } /* if, else, set, loop */
-        .token-command { color: #569cd6; font-weight: bold; } /* command, trigger */
-        .token-string { color: #ce9178; }  /* "text" */
-        .token-variable { color: #9cdcfe; } /* {var} */
-        .token-number { color: #b5cea8; }  /* 123 */
-        .token-comment { color: #6a9955; } /* # comment */
-        .token-type { color: #4ec9b0; } /* file, nbt, player */
-
-        /* Console */
-        .console-area { width: 350px; background: #101010; border-left: 1px solid var(--border); display: flex; flex-direction: column; }
-        .console-out { flex: 1; padding: 10px; overflow-y: auto; font-family: var(--font-code); font-size: 12px; }
-        .log { margin-bottom: 4px; word-wrap: break-word; }
-        .chat-box { padding: 10px; background: var(--panel); border-top: 1px solid var(--border); }
-        input { width: 100%; box-sizing: border-box; background: #3c3c3c; border: 1px solid #555; color: white; padding: 8px; outline: none; border-radius: 2px; }
-
+        .kwd { color: #569cd6; font-weight: bold; } /* Keywords */
+        .str { color: #ce9178; } /* Strings */
+        .var { color: #9cdcfe; } /* Variables */
+        .cmt { color: #6a9955; } /* Comments */
+        .cmd { color: #c586c0; } /* Command definition */
+        
         /* MC Colors */
-        .mc-c { color: #FF5555; } .mc-a { color: #55FF55; } .mc-e { color: #FFFF55; }
-        .mc-b { color: #55FFFF; } .mc-d { color: #FF55FF; } .mc-7 { color: #AAAAAA; }
-        .mc-6 { color: #FFAA00; } .mc-sys { color: #4ec9b0; font-style: italic; }
+        .mc-a { color: #55FF55; } .mc-c { color: #FF5555; } .mc-e { color: #FFFF55; } .mc-f { color: white; }
     </style>
 </head>
 <body>
 
 <header>
-    <div class="logo">SKRIPT <span>ULTRA</span></div>
-    <div style="display:flex; gap:10px;">
-        <button class="btn btn-danger" onclick="hardReset()">Reset All</button>
-        <button class="btn" onclick="reloadEngine()">▶ RELOAD & RUN</button>
+    <div style="font-weight:bold; color:white;">⚡ SKRIPT RUNNER</div>
+    <div class="btn-group">
+        <input type="file" id="file-upload" accept=".sk,.txt,.yml" onchange="handleFileUpload(this)">
+        <button onclick="document.getElementById('file-upload').click()">📂 OPEN FILE</button>
+        <button onclick="createNewFile()">➕ NEW</button>
+        <button onclick="deleteCurrentFile()" style="color:#ff6b6b;">🗑 DELETE</button>
+        <button class="primary" onclick="runScripts()">▶ RELOAD & RUN</button>
     </div>
 </header>
 
 <div class="workspace">
-    <div class="explorer">
-        <div class="explorer-header">
-            <span>Files</span>
-            <span onclick="createFile()" style="cursor:pointer; font-size:16px;">+</span>
-        </div>
-        <div class="file-list" id="fileList"></div>
+    
+    <div class="sidebar">
+        <div class="sidebar-header">YOUR FILES</div>
+        <div class="file-list" id="file-list"></div>
     </div>
 
-    <div class="editor-area">
-        <div class="tabs" id="activeFileLabel">No File Selected</div>
-        <div class="code-container">
-            <pre id="highlight-layer" class="editor-layer"></pre>
-            <textarea id="editor-input" class="editor-layer" spellcheck="false" oninput="handleInput()" onscroll="syncScroll()" onkeydown="handleTab(event)" disabled></textarea>
+    <div class="editor-container">
+        <div class="tab-bar" id="active-filename">No file selected (Create New or Open)</div>
+        <div class="code-wrapper">
+            <pre id="highlight-layer" class="layer"></pre>
+            <textarea id="input-layer" class="layer" spellcheck="false" 
+                      oninput="updateHighlight()" 
+                      onscroll="syncScroll()" 
+                      onkeydown="handleTab(event)"
+                      disabled
+                      placeholder="Open a file or create a new one to start typing..."></textarea>
         </div>
     </div>
 
-    <div class="console-area">
-        <div class="console-out" id="console"></div>
-        <div class="chat-box">
-            <input type="text" id="cmdInput" placeholder="/command or chat..." autocomplete="off">
+    <div class="console-panel">
+        <div class="console-logs" id="console">
+            <div class="log-entry" style="color:#aaa;">Console ready.</div>
+        </div>
+        <div class="chat-input">
+            <input type="text" id="chat-box" placeholder="Type /command..." autocomplete="off">
         </div>
     </div>
 </div>
 
 <script>
-/* =========================================
-   MODULE 1: SYNTAX HIGHLIGHTER
-   ========================================= */
+    // --- VIRTUAL FILE SYSTEM ---
+    let vfs = {};
+    let currentFile = null;
 
-// Define Skript syntax rules
-const rules = [
-    { regex: /#(.*)/g, type: 'token-comment' }, // Comments
-    { regex: /"(.*?)"/g, type: 'token-string' }, // Strings
-    { regex: /%{(.*?)}%/g, type: 'token-variable' }, // Interpolated Vars
-    { regex: /{(.*?)}/g, type: 'token-variable' }, // Normal Vars
-    { regex: /\b(command|trigger|function|on)\b/g, type: 'token-command' }, // Structure
-    { regex: /\b(set|add|remove|delete|clear|send|broadcast|wait|stop|cancel|replace|create|write|loop|if|else|return)\b/g, type: 'token-keyword' }, // Keywords
-    { regex: /\b(player|console|file|nbt|tag|items?|seconds?|ticks?)\b/g, type: 'token-type' }, // Types
-    { regex: /\b\d+(\.\d+)?\b/g, type: 'token-number' } // Numbers
-];
-
-function highlightCode(code) {
-    if (!code) return "";
-    
-    // 1. Escape HTML (prevent injection)
-    let safeCode = code.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
-    
-    // We can't simple-replace regex because matches overlap. 
-    // We will use a simplified tokenizing approach for performance in JS only.
-    // However, for this single-file tool, we will use a sequenced replacement with placeholders 
-    // to prevent replacing inside already replaced tags.
-    
-    // BETTER APPROACH: Split by lines and process
-    // This is a naive highlighter but works for visual effect
-    
-    // Temporary placeholder map
-    const placeholders = [];
-    const store = (content, type) => {
-        placeholders.push(`<span class="${type}">${content}</span>`);
-        return `%%%PH${placeholders.length-1}%%%`;
-    };
-
-    // Process Strings First (to avoid highlighting keywords inside strings)
-    safeCode = safeCode.replace(/"(.*?)"/g, (match) => store(match, 'token-string'));
-    
-    // Process Comments (highest priority)
-    safeCode = safeCode.replace(/#(.*)/g, (match) => store(match, 'token-comment'));
-
-    // Process Variables
-    safeCode = safeCode.replace(/{([a-zA-Z0-9_]+)}/g, (match) => store(match, 'token-variable'));
-
-    // Process Keywords
-    const keywords = /\b(command|trigger|set|add|remove|send|broadcast|wait|if|else|loop|create|write|file|nbt)\b/g;
-    safeCode = safeCode.replace(keywords, (match) => store(match, 'token-keyword'));
-    
-    // Process Numbers
-    safeCode = safeCode.replace(/\b\d+\b/g, (match) => store(match, 'token-number'));
-
-    // Restore Placeholders
-    // We must loop because nested placeholders aren't supported in this simple version, 
-    // but our order (String -> Comment -> Var -> Keyword) mostly prevents nesting issues.
-    let oldCode = "";
-    while(oldCode !== safeCode) {
-        oldCode = safeCode;
-        safeCode = safeCode.replace(/%%%PH(\d+)%%%/g, (_, id) => placeholders[id]);
-    }
-
-    // Handle trailing newlines for pre tag
-    if (safeCode.endsWith('\n')) safeCode += ' '; 
-    
-    return safeCode;
-}
-
-function handleInput() {
-    const textarea = document.getElementById('editor-input');
-    const highlight = document.getElementById('highlight-layer');
-    const code = textarea.value;
-    
-    // Sync Text
-    highlight.innerHTML = highlightCode(code);
-    
-    // Sync Scroll
-    syncScroll();
-    
-    // Auto-Save
-    saveCurrent();
-}
-
-function syncScroll() {
-    const textarea = document.getElementById('editor-input');
-    const highlight = document.getElementById('highlight-layer');
-    highlight.scrollTop = textarea.scrollTop;
-    highlight.scrollLeft = textarea.scrollLeft;
-}
-
-function handleTab(e) {
-    if(e.key == 'Tab') {
-        e.preventDefault();
-        document.execCommand('insertText', false, '    ');
-        handleInput(); // Trigger highlight update
-    }
-}
-
-
-/* =========================================
-   MODULE 2: VIRTUAL FILE SYSTEM
-   ========================================= */
-const VFS_KEY = "skript_ultimate_vfs";
-let vfs = {};
-let currentFile = null;
-
-function initVFS() {
-    const saved = localStorage.getItem(VFS_KEY);
-    if (saved) {
+    // Load from localstorage on boot
+    const saved = localStorage.getItem("skript_files");
+    if(saved) {
         vfs = JSON.parse(saved);
     } else {
-        // Default Example Files
-        vfs = {
-            "main.sk": `command /hello:
+        // Default file if empty
+        vfs = { "example.sk": `command /test:
     trigger:
-        # Syntax highlighting test
-        send "&aHello World!" to player
-        set {_num} to 10
-        add 5 to {_num}
+        send "&aIt works!"` };
+    }
+
+    // --- FILE OPERATIONS ---
+    
+    function renderFileList() {
+        const list = document.getElementById("file-list");
+        list.innerHTML = "";
         
-        if {_num} > 10:
-            send "&bBig number: %{_num}%"
+        Object.keys(vfs).forEach(name => {
+            const div = document.createElement("div");
+            div.className = `file-item ${currentFile === name ? 'active' : ''}`;
+            div.innerText = name;
+            div.onclick = () => openFile(name);
+            list.appendChild(div);
+        });
+    }
+
+    function openFile(name) {
+        currentFile = name;
+        document.getElementById("active-filename").innerText = name;
+        
+        const input = document.getElementById("input-layer");
+        input.value = vfs[name];
+        input.disabled = false; // ENABLE EDITING
+        input.placeholder = "";
+        
+        updateHighlight();
+        renderFileList();
+    }
+
+    function saveCurrent() {
+        if(currentFile) {
+            vfs[currentFile] = document.getElementById("input-layer").value;
+            localStorage.setItem("skript_files", JSON.stringify(vfs));
+        }
+    }
+
+    function createNewFile() {
+        const name = prompt("File Name (e.g. script.sk):");
+        if(name) {
+            vfs[name] = "";
+            saveCurrent();
+            openFile(name);
+        }
+    }
+
+    function deleteCurrentFile() {
+        if(currentFile && confirm("Delete " + currentFile + "?")) {
+            delete vfs[currentFile];
+            currentFile = null;
+            document.getElementById("input-layer").value = "";
+            document.getElementById("input-layer").disabled = true;
+            document.getElementById("highlight-layer").innerHTML = "";
+            document.getElementById("active-filename").innerText = "No file selected";
+            localStorage.setItem("skript_files", JSON.stringify(vfs));
+            renderFileList();
+        }
+    }
+
+    // --- REAL FILE UPLOAD HANDLER ---
+    function handleFileUpload(input) {
+        const file = input.files[0];
+        if(!file) return;
+
+        const reader = new FileReader();
+        reader.onload = function(e) {
+            const content = e.target.result;
+            // Save to VFS
+            vfs[file.name] = content;
+            localStorage.setItem("skript_files", JSON.stringify(vfs));
+            // Open it immediately
+            openFile(file.name);
+        };
+        reader.readAsText(file);
+        // Reset input so you can upload the same file again if needed
+        input.value = '';
+    }
+
+    // --- EDITOR LOGIC (Highlighting) ---
+
+    function updateHighlight() {
+        const text = document.getElementById("input-layer").value;
+        const hl = document.getElementById("highlight-layer");
+        
+        // Simple Tokenizer
+        let html = text
+            .replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;") // Escape HTML
+            .replace(/#(.*)/g, '<span class="cmt">#$1</span>') // Comments
+            .replace(/"(.*?)"/g, '<span class="str">"$1"</span>') // Strings
+            .replace(/%{(.*?)}%/g, '<span class="var">%{$1}%</span>') // Embedded Vars
+            .replace(/{([a-zA-Z0-9_]+)}/g, '<span class="var">{$1}</span>') // Normal Vars
+            .replace(/\b(command|trigger|function|on)\b/g, '<span class="cmd">$1</span>') // Structure
+            .replace(/\b(set|add|remove|send|broadcast|wait|if|else|loop)\b/g, '<span class="kwd">$1</span>'); // Keywords
+
+        // Fix double-span issue logic (simplified)
+        // Note: This regex replace is basic. Real highlighting requires a parser state machine, 
+        // but this works for basic Skript visuals.
+        
+        hl.innerHTML = html + "\n"; // Add newline to ensure scrolling matches
+        saveCurrent();
+    }
+
+    function syncScroll() {
+        const input = document.getElementById("input-layer");
+        const hl = document.getElementById("highlight-layer");
+        hl.scrollTop = input.scrollTop;
+        hl.scrollLeft = input.scrollLeft;
+    }
+
+    function handleTab(e) {
+        if(e.key === 'Tab') {
+            e.preventDefault();
+            document.execCommand('insertText', false, '    ');
+            updateHighlight();
+        }
+    }
+
+    // --- SKRIPT INTERPRETER ---
+    
+    let commands = {};
+
+    function log(msg, type="mc-f") {
+        const div = document.createElement("div");
+        div.className = `log-entry ${type}`;
+        div.innerHTML = msg.replace(/&([0-9a-f])/g, '<span class="mc-$1">').replace(/&r/g, '</span>');
+        const c = document.getElementById("console");
+        c.appendChild(div);
+        c.scrollTop = c.scrollHeight;
+    }
+
+    function runScripts() {
+        commands = {};
+        document.getElementById("console").innerHTML = "";
+        log("Loading scripts...", "mc-e");
+
+        Object.keys(vfs).forEach(fname => {
+            if(fname.endsWith(".sk")) {
+                parseScript(vfs[fname]);
+            }
+        });
+        
+        log(`Loaded ${Object.keys(commands).length} commands.`, "mc-a");
+    }
+
+    function parseScript(code) {
+        const lines = code.split('\n');
+        let currentCmd = null;
+        let cmdIndent = 0;
+
+        lines.forEach(line => {
+            const trimmed = line.trim();
+            if(!trimmed || trimmed.startsWith('#')) return;
+
+            const indent = line.search(/\S|$/);
             
-        wait 1 second
-        send "&eDone."`,
-            
-            "
+            if(trimmed.startsWith("command /")) {
+                const name = trimmed.split('/')[1].split(':')[0].trim();
+                currentCmd = name;
+                cmdIndent = indent;
+                commands[name] = [];
+            } else if(currentCmd && indent > cmdIndent) {
+                commands[currentCmd].push({ text: trimmed, indent: indent });
+            } else {
+                currentCmd = null;
+            }
+        });
+    }
+
+    // Chat Handler
+    document.getElementById("chat-box").addEventListener("keydown", async (e) => {
+        if(e.key === "Enter") {
+            const val = e.target.value.trim();
+            e.target.value = "";
+            if(val.startsWith("/")) {
+                const cmd = val.substring(1).split(" ")[0];
+                if(commands[cmd]) {
+                    await executeBlock(commands[cmd]);
+                } else {
+                    log("Unknown command.", "mc-c");
+                }
+            } else {
+                log("<Player> " + val, "mc-f");
+            }
+        }
+    });
+
+    async function executeBlock(lines) {
+        // Very basic execution for demo
+        for(let line of lines) {
+            const t = line.text;
+            if(t.startsWith("send ")) {
+                const msg = t.match(/"(.*)"/);
+                if(msg) log(msg[1]);
+            }
+            if(t.startsWith("wait ")) {
+                await new Promise(r => setTimeout(r, 1000));
+            }
+        }
+    }
+
+    // Init
+    renderFileList();
+    if(Object.keys(vfs).length > 0) openFile(Object.keys(vfs)[0]);
+
+</script>
+</body>
+</html>
