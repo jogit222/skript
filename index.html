@@ -2,342 +2,265 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Skript IDE Pro - Definitive Edition</title>
+    <title>Skript Ultra IDE + Highlighting</title>
     <style>
-        :root {
-            --bg: #282a36; --sidebar: #21222c; --fg: #f8f8f2;
-            --purple: #bd93f9; --selection: #44475a; --comment: #6272a4;
-            --cyan: #8be9fd; --pink: #ff79c6; --green: #50fa7b; 
-            --orange: #ffb86c; --red: #ff5555; --yellow: #f1fa8c;
-            --blue: #61afef; --gui-gold: #e5c07b;
-            --line-height: 24px;
+        :root { 
+            --bg: #1e1e1e; 
+            --panel: #252526; 
+            --accent: #007acc; 
+            --text: #d4d4d4; 
+            --border: #3e3e42; 
+            --font-code: 'Consolas', 'Monaco', 'Courier New', monospace;
         }
         
-        body, html { margin: 0; padding: 0; height: 100%; background: var(--bg); font-family: 'Segoe UI', sans-serif; overflow: hidden; color: var(--fg); }
-        .container { display: flex; height: 100vh; width: 100vw; }
-        
-        /* Sidebar */
-        .sidebar { width: 260px; background: var(--sidebar); display: flex; flex-direction: column; border-right: 1px solid rgba(255,255,255,0.1); z-index: 10; }
-        .sidebar-brand { padding: 20px; font-size: 18px; font-weight: bold; color: var(--purple); border-bottom: 1px solid rgba(255,255,255,0.05); }
-        .project-list { flex: 1; padding: 10px; overflow-y: auto; }
-        .project-item { padding: 10px; border-radius: 6px; cursor: pointer; font-size: 13px; margin-bottom: 5px; display: flex; justify-content: space-between; transition: 0.2s; }
-        .project-item:hover { background: var(--selection); }
-        .project-item.active { background: var(--purple); color: white; }
-        
-        /* Main */
-        .main { flex: 1; display: flex; flex-direction: column; background: var(--bg); position: relative; }
-        .toolbar { height: 50px; background: var(--sidebar); display: flex; align-items: center; padding: 0 15px; border-bottom: 1px solid rgba(255,255,255,0.1); justify-content: space-between; }
-        .tool-btn { background: var(--selection); border: 1px solid rgba(255,255,255,0.1); color: var(--fg); padding: 6px 12px; border-radius: 4px; cursor: pointer; font-size: 11px; font-weight: bold; transition: 0.2s; border: 1px solid transparent; }
-        .tool-btn:hover { background: rgba(255,255,255,0.1); border-color: rgba(255,255,255,0.2); }
-        .btn-green { color: var(--green); border-color: var(--green); }
-        .btn-yellow { color: var(--yellow); border-color: var(--yellow); }
-        .btn-cyan { color: var(--cyan); border-color: var(--cyan); }
-        .status-bar { height: 25px; background: var(--sidebar); border-top: 1px solid rgba(255,255,255,0.05); display: flex; align-items: center; padding: 0 10px; font-size: 11px; color: var(--comment); justify-content: space-between;}
-        
-        /* Editor Engine */
-        .editor-container { flex: 1; position: relative; display: flex; overflow: hidden; }
-        .code-font { font-family: 'Consolas', 'Monaco', 'Courier New', monospace; font-size: 14px; line-height: var(--line-height); letter-spacing: 0px; }
-        #gutter { width: 45px; background: var(--sidebar); color: var(--comment); text-align: right; border-right: 1px solid rgba(255,255,255,0.1); user-select: none; box-sizing: border-box; overflow: hidden; padding-top: 15px; padding-bottom: 15px; }
-        .line-number { height: var(--line-height); line-height: var(--line-height); padding-right: 8px; }
-        .input-area { flex: 1; position: relative; overflow: hidden; }
+        * { box-sizing: border-box; }
 
-        #editing, #highlighting { position: absolute; top: 0; left: 0; width: 100%; height: 100%; margin: 0; padding: 15px; border: 0; tab-size: 4; white-space: pre; word-wrap: normal; box-sizing: border-box; }
-        #editing { z-index: 3; background: transparent; color: transparent; caret-color: var(--fg); outline: none; resize: none; overflow: auto; }
-        #highlighting { z-index: 2; pointer-events: none; overflow: hidden; color: var(--fg); }
+        body { margin: 0; background: var(--bg); color: var(--text); font-family: 'Segoe UI', sans-serif; display: flex; flex-direction: column; height: 100vh; overflow: hidden; }
+        
+        /* Header */
+        header { height: 40px; background: #333; display: flex; align-items: center; justify-content: space-between; padding: 0 15px; border-bottom: 1px solid var(--border); z-index: 10; }
+        .logo { font-weight: 800; color: #fff; letter-spacing: 1px; font-size: 14px; }
+        .logo span { color: var(--accent); }
+        .btn { background: var(--accent); color: white; border: none; padding: 5px 12px; border-radius: 2px; cursor: pointer; font-size: 12px; font-weight: 600; }
+        .btn:hover { filter: brightness(1.1); }
+        .btn-danger { background: #ce1212; }
 
-        /* Tokens */
-        .sk-event { color: var(--pink); font-weight: bold; }
-        .sk-effect { color: var(--cyan); }
-        .sk-var { color: var(--orange); }
-        .sk-comment { color: var(--comment); font-style: italic; }
-        .sk-string { color: var(--green); }
-        .sk-bracket { color: var(--purple); font-weight: bold; }
-        .sk-gui { color: var(--gui-gold); font-weight: bold; }
-        .addon-badge { background: var(--gui-gold); color: #000; font-size: 9px; padding: 2px 6px; border-radius: 10px; font-weight: bold; margin-left: 10px; }
+        /* Workspace Layout */
+        .workspace { display: flex; flex: 1; height: calc(100vh - 40px); }
+        
+        /* Sidebar (Explorer) */
+        .explorer { width: 220px; background: var(--panel); border-right: 1px solid var(--border); display: flex; flex-direction: column; }
+        .explorer-header { padding: 10px; font-size: 11px; font-weight: bold; text-transform: uppercase; display: flex; justify-content: space-between; color: #aaa; background: #2a2a2d; }
+        .file-list { flex: 1; overflow-y: auto; }
+        .file-item { padding: 4px 15px; cursor: pointer; font-size: 13px; display: flex; align-items: center; gap: 8px; color: #bbb; border-left: 2px solid transparent; }
+        .file-item:hover { background: #2a2d2e; color: #fff; }
+        .file-item.active { background: #37373d; border-left-color: var(--accent); color: #fff; }
+        
+        /* EDITOR CONTAINER (Complex Layering) */
+        .editor-area { flex: 1; display: flex; flex-direction: column; background: #1e1e1e; position: relative; min-width: 0; }
+        .tabs { height: 35px; background: #2d2d2d; display: flex; align-items: center; padding-left: 10px; font-size: 13px; color: #999; border-bottom: 1px solid var(--border); }
+        
+        /* The container for the layered editor */
+        .code-container {
+            position: relative;
+            flex: 1;
+            overflow: hidden; /* We scroll the inside elements */
+        }
 
-        /* Modals */
-        .modal-overlay { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.85); z-index: 3000; align-items: center; justify-content: center; }
-        .modal { background: var(--sidebar); padding: 30px; border-radius: 12px; width: 500px; border: 1px solid var(--purple); max-height: 80vh; overflow-y: auto; display:flex; flex-direction:column; }
-        .input-field { width: 100%; background: var(--bg); border: 1px solid rgba(255,255,255,0.1); color: var(--fg); padding: 12px; border-radius: 6px; margin-bottom: 15px; box-sizing: border-box; }
-        .error-item { background: rgba(255, 85, 85, 0.1); border-left: 3px solid var(--red); padding: 10px; margin-bottom: 8px; font-size: 12px; }
-        .warning-item { background: rgba(241, 250, 140, 0.1); border-left: 3px solid var(--yellow); padding: 10px; margin-bottom: 8px; font-size: 12px; }
+        /* Common styles for both textarea and highlight layer */
+        .editor-layer {
+            position: absolute;
+            top: 0; left: 0;
+            width: 100%; height: 100%;
+            margin: 0; border: 0; padding: 15px;
+            font-family: var(--font-code);
+            font-size: 14px;
+            line-height: 1.5;
+            tab-size: 4;
+            white-space: pre;
+            overflow: auto;
+            word-wrap: normal;
+        }
+
+        /* Bottom Layer: The Syntax Highlighter */
+        #highlight-layer {
+            z-index: 1;
+            pointer-events: none; /* Let clicks pass through to textarea */
+            color: #d4d4d4; 
+        }
+
+        /* Top Layer: The Input */
+        #editor-input {
+            z-index: 2;
+            background: transparent;
+            color: transparent; /* Hide text, keep caret */
+            caret-color: #fff;  /* White cursor */
+            outline: none;
+            resize: none;
+        }
+
+        /* Syntax Colors */
+        .token-keyword { color: #c586c0; font-weight: bold; } /* if, else, set, loop */
+        .token-command { color: #569cd6; font-weight: bold; } /* command, trigger */
+        .token-string { color: #ce9178; }  /* "text" */
+        .token-variable { color: #9cdcfe; } /* {var} */
+        .token-number { color: #b5cea8; }  /* 123 */
+        .token-comment { color: #6a9955; } /* # comment */
+        .token-type { color: #4ec9b0; } /* file, nbt, player */
+
+        /* Console */
+        .console-area { width: 350px; background: #101010; border-left: 1px solid var(--border); display: flex; flex-direction: column; }
+        .console-out { flex: 1; padding: 10px; overflow-y: auto; font-family: var(--font-code); font-size: 12px; }
+        .log { margin-bottom: 4px; word-wrap: break-word; }
+        .chat-box { padding: 10px; background: var(--panel); border-top: 1px solid var(--border); }
+        input { width: 100%; box-sizing: border-box; background: #3c3c3c; border: 1px solid #555; color: white; padding: 8px; outline: none; border-radius: 2px; }
+
+        /* MC Colors */
+        .mc-c { color: #FF5555; } .mc-a { color: #55FF55; } .mc-e { color: #FFFF55; }
+        .mc-b { color: #55FFFF; } .mc-d { color: #FF55FF; } .mc-7 { color: #AAAAAA; }
+        .mc-6 { color: #FFAA00; } .mc-sys { color: #4ec9b0; font-style: italic; }
     </style>
 </head>
 <body>
 
-<input type="file" id="file-input" style="display: none;" accept=".sk,.txt" onchange="processFileImport(this)">
-
-<div id="auth-modal" class="modal-overlay" style="display:flex;">
-    <div class="modal" style="width: 350px;">
-        <h2 style="margin-top:0; color:var(--purple)">Definitive Session</h2>
-        <input type="text" id="auth-user" class="input-field" placeholder="Username">
-        <input type="password" id="auth-pass" class="input-field" placeholder="Password">
-        <button class="tool-btn" style="width:100%; padding:12px; background:var(--purple); color:white; border:none;" onclick="handleAuth()">LAUNCH IDE</button>
-        <p id="auth-msg" style="font-size: 11px; color: var(--red); margin-top: 10px;"></p>
+<header>
+    <div class="logo">SKRIPT <span>ULTRA</span></div>
+    <div style="display:flex; gap:10px;">
+        <button class="btn btn-danger" onclick="hardReset()">Reset All</button>
+        <button class="btn" onclick="reloadEngine()">▶ RELOAD & RUN</button>
     </div>
-</div>
+</header>
 
-<div id="syntax-modal" class="modal-overlay">
-    <div class="modal">
-        <h2 style="margin:0 0 20px 0; color:var(--fg)">Deep Syntax Scan</h2>
-        <div id="syntax-results" style="flex:1; overflow-y:auto;"></div>
-        <button class="tool-btn" style="width:100%; margin-top:15px;" onclick="document.getElementById('syntax-modal').style.display='none'">CLOSE</button>
+<div class="workspace">
+    <div class="explorer">
+        <div class="explorer-header">
+            <span>Files</span>
+            <span onclick="createFile()" style="cursor:pointer; font-size:16px;">+</span>
+        </div>
+        <div class="file-list" id="fileList"></div>
     </div>
-</div>
 
-<div class="container">
-    <div class="sidebar">
-        <div class="sidebar-brand">
-            Skript IDE <small style="font-size: 10px; opacity: 0.5;">ULTRA</small>
-            <div style="font-size: 10px; color: var(--gui-gold); margin-top:5px;">✦ Definitive Addon Pack</div>
-        </div>
-        <div style="padding: 15px; border-bottom: 1px solid rgba(255,255,255,0.05);">
-            <div id="user-display" style="font-size: 12px; color: var(--cyan); margin-bottom: 10px;">User: Guest</div>
-            <div style="display:flex; gap:5px;">
-                <button class="tool-btn" style="flex:1" onclick="createNewProject()">+ NEW</button>
-                <button class="tool-btn btn-cyan" style="flex:1" onclick="triggerImport()">📂 OPEN</button>
-            </div>
-        </div>
-        <div class="project-list" id="project-list"></div>
-        <div style="padding: 15px;">
-            <button class="tool-btn" style="width:100%" onclick="location.reload()">LOGOUT</button>
+    <div class="editor-area">
+        <div class="tabs" id="activeFileLabel">No File Selected</div>
+        <div class="code-container">
+            <pre id="highlight-layer" class="editor-layer"></pre>
+            <textarea id="editor-input" class="editor-layer" spellcheck="false" oninput="handleInput()" onscroll="syncScroll()" onkeydown="handleTab(event)" disabled></textarea>
         </div>
     </div>
 
-    <div class="main">
-        <div class="toolbar">
-            <div style="display:flex; align-items:center;">
-                <span id="current-filename" style="color: var(--purple); font-weight: bold;">untitled.sk</span>
-                <span id="addon-indicator" class="addon-badge" style="display:none;">ADDON CONTENT</span>
-            </div>
-            <div style="display:flex; gap:10px;">
-                <button class="tool-btn btn-yellow" onclick="runSyntaxCheck()">⚠️ ANALYZE</button>
-                <button class="tool-btn" onclick="downloadCode()">⬇️ DOWNLOAD</button>
-                <button class="tool-btn btn-green" onclick="saveCurrentProject(false)">💾 SAVE (CTRL+S)</button>
-            </div>
-        </div>
-        
-        <div class="editor-container">
-            <div id="gutter" class="code-font"></div>
-            <div class="input-area">
-                <pre id="highlighting" class="code-font"></pre>
-                <textarea id="editing" class="code-font" spellcheck="false" oninput="onEditorInput()" onscroll="syncScroll()" onkeyup="updateCursorPos()" onclick="updateCursorPos()"></textarea>
-            </div>
-        </div>
-
-        <div class="status-bar">
-            <span id="save-status">Ready</span>
-            <span id="cursor-pos">Ln 1, Col 1</span>
+    <div class="console-area">
+        <div class="console-out" id="console"></div>
+        <div class="chat-box">
+            <input type="text" id="cmdInput" placeholder="/command or chat..." autocomplete="off">
         </div>
     </div>
 </div>
 
 <script>
-    const elInput = document.getElementById('editing');
-    const elOutput = document.getElementById('highlighting');
-    const elGutter = document.getElementById('gutter');
-    const elProjList = document.getElementById('project-list');
-    const elSaveStatus = document.getElementById('save-status');
+/* =========================================
+   MODULE 1: SYNTAX HIGHLIGHTER
+   ========================================= */
 
-    let saveTimer; 
-    let users = JSON.parse(localStorage.getItem('sk_ultra_db')) || {};
-    let currentUser = null;
-    let currentProjectId = null;
+// Define Skript syntax rules
+const rules = [
+    { regex: /#(.*)/g, type: 'token-comment' }, // Comments
+    { regex: /"(.*?)"/g, type: 'token-string' }, // Strings
+    { regex: /%{(.*?)}%/g, type: 'token-variable' }, // Interpolated Vars
+    { regex: /{(.*?)}/g, type: 'token-variable' }, // Normal Vars
+    { regex: /\b(command|trigger|function|on)\b/g, type: 'token-command' }, // Structure
+    { regex: /\b(set|add|remove|delete|clear|send|broadcast|wait|stop|cancel|replace|create|write|loop|if|else|return)\b/g, type: 'token-keyword' }, // Keywords
+    { regex: /\b(player|console|file|nbt|tag|items?|seconds?|ticks?)\b/g, type: 'token-type' }, // Types
+    { regex: /\b\d+(\.\d+)?\b/g, type: 'token-number' } // Numbers
+];
 
-    // --- MASSIVE 15,000+ KEYWORD SYNTAX ENGINE ---
-    const SYNC_CLUSTERS = {
-        events: ["on join", "on quit", "on death", "on damage", "on break", "on place", "on chat", "on command", "on load", "on unload", "on connect", "on disconnect", "on explode", "on portal", "on spawn", "on drop", "on pickup", "on craft", "on inventory click", "on skript load", "on world change", "on weather change", "on time change", "on server start", "on chunk load", "on pressure plate", "on sneak toggle", "on sprint toggle", "on jump"],
-        effects: ["send", "broadcast", "message", "set", "add", "remove", "delete", "clear", "reset", "spawn", "kill", "teleport", "push", "launch", "ignite", "strike lightning", "heal", "repair", "damage", "kick", "ban", "op", "deop", "wait", "execute console command", "give", "enchant", "apply", "remove effect", "cancel event", "drop", "force", "close inventory"],
-        addons: [
-            // skript-gui
-            "create a gui", "make gui slot", "format gui slot", "unstealable", "to run:", "to close:", "to do nothing", "edit gui", "open last created gui", "gui-inventory", "gui-slot",
-            // skript-scoreboard
-            "set scoreboard name", "set scoreboard line", "clear scoreboard", "show scoreboard", "hide scoreboard",
-            // skperms / luckperms
-            "add permission", "remove permission", "player has permission", "is in group", "add group", "remove group", "primary group of",
-            // skbee / skquery
-            "nbt of", "nbt compound", "block data of", "bossbar", "create bossbar", "mysql query", "format json", "json"
-        ],
-        expr: ["player", "victim", "attacker", "event-entity", "event-block", "event-item", "target", "loop-player", "loop-value", "uuid", "ip", "name", "display name", "lore", "health", "location", "world", "all players", "current world", "inventory", "clicked slot", "tool of", "distance between"],
-        cond: ["is set", "is not set", "is true", "is false", "has permission", "is online", "is dead", "exists", "contains", "matches", "greater than", "less than"]
+function highlightCode(code) {
+    if (!code) return "";
+    
+    // 1. Escape HTML (prevent injection)
+    let safeCode = code.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
+    
+    // We can't simple-replace regex because matches overlap. 
+    // We will use a simplified tokenizing approach for performance in JS only.
+    // However, for this single-file tool, we will use a sequenced replacement with placeholders 
+    // to prevent replacing inside already replaced tags.
+    
+    // BETTER APPROACH: Split by lines and process
+    // This is a naive highlighter but works for visual effect
+    
+    // Temporary placeholder map
+    const placeholders = [];
+    const store = (content, type) => {
+        placeholders.push(`<span class="${type}">${content}</span>`);
+        return `%%%PH${placeholders.length-1}%%%`;
     };
 
-    // --- AUTH, IMPORT, EXPORT ---
-    function handleAuth() {
-        const u = document.getElementById('auth-user').value.trim();
-        const p = document.getElementById('auth-pass').value.trim();
-        if(!u || !p) return;
-        if (!users[u]) users[u] = { pass: p, projects: { "main.sk": "on join:\n\tset scoreboard name of player to \"&bServer\"\n\tsend \"&7Welcome!\"" } };
-        if (users[u].pass === p) {
-            currentUser = u;
-            document.getElementById('auth-modal').style.display = 'none';
-            document.getElementById('user-display').innerText = "User: " + u;
-            renderProjectList();
-            loadProject(Object.keys(users[u].projects)[0]);
-        }
+    // Process Strings First (to avoid highlighting keywords inside strings)
+    safeCode = safeCode.replace(/"(.*?)"/g, (match) => store(match, 'token-string'));
+    
+    // Process Comments (highest priority)
+    safeCode = safeCode.replace(/#(.*)/g, (match) => store(match, 'token-comment'));
+
+    // Process Variables
+    safeCode = safeCode.replace(/{([a-zA-Z0-9_]+)}/g, (match) => store(match, 'token-variable'));
+
+    // Process Keywords
+    const keywords = /\b(command|trigger|set|add|remove|send|broadcast|wait|if|else|loop|create|write|file|nbt)\b/g;
+    safeCode = safeCode.replace(keywords, (match) => store(match, 'token-keyword'));
+    
+    // Process Numbers
+    safeCode = safeCode.replace(/\b\d+\b/g, (match) => store(match, 'token-number'));
+
+    // Restore Placeholders
+    // We must loop because nested placeholders aren't supported in this simple version, 
+    // but our order (String -> Comment -> Var -> Keyword) mostly prevents nesting issues.
+    let oldCode = "";
+    while(oldCode !== safeCode) {
+        oldCode = safeCode;
+        safeCode = safeCode.replace(/%%%PH(\d+)%%%/g, (_, id) => placeholders[id]);
     }
 
-    function triggerImport() { document.getElementById('file-input').click(); }
-    function processFileImport(input) {
-        if (input.files.length === 0) return;
-        const file = input.files[0];
-        const reader = new FileReader();
-        reader.onload = (e) => { createNewProject(file.name, e.target.result); input.value = ''; };
-        reader.readAsText(file);
-    }
+    // Handle trailing newlines for pre tag
+    if (safeCode.endsWith('\n')) safeCode += ' '; 
+    
+    return safeCode;
+}
 
-    function downloadCode() {
-        if(!currentProjectId) return;
-        const blob = new Blob([elInput.value], { type: 'text/plain' });
-        const url = window.URL.createObjectURL(blob);
-        const a = document.createElement('a');
-        a.href = url;
-        a.download = currentProjectId;
-        a.click();
-        window.URL.revokeObjectURL(url);
-    }
+function handleInput() {
+    const textarea = document.getElementById('editor-input');
+    const highlight = document.getElementById('highlight-layer');
+    const code = textarea.value;
+    
+    // Sync Text
+    highlight.innerHTML = highlightCode(code);
+    
+    // Sync Scroll
+    syncScroll();
+    
+    // Auto-Save
+    saveCurrent();
+}
 
-    // --- PROJECT LOGIC ---
-    function renderProjectList() {
-        elProjList.innerHTML = "";
-        const projs = users[currentUser].projects;
-        Object.keys(projs).forEach(name => {
-            const div = document.createElement('div');
-            div.className = `project-item ${currentProjectId === name ? 'active' : ''}`;
-            div.innerHTML = `<span>📄 ${name}</span><span onclick="deleteProject('${name}', event)" style="color:var(--red)">×</span>`;
-            div.onclick = () => loadProject(name);
-            elProjList.appendChild(div);
-        });
-    }
+function syncScroll() {
+    const textarea = document.getElementById('editor-input');
+    const highlight = document.getElementById('highlight-layer');
+    highlight.scrollTop = textarea.scrollTop;
+    highlight.scrollLeft = textarea.scrollLeft;
+}
 
-    function loadProject(name) {
-        if(!name) return;
-        currentProjectId = name;
-        elInput.value = users[currentUser].projects[name];
-        document.getElementById('current-filename').innerText = name;
-        updateEditor();
-        renderProjectList();
+function handleTab(e) {
+    if(e.key == 'Tab') {
+        e.preventDefault();
+        document.execCommand('insertText', false, '    ');
+        handleInput(); // Trigger highlight update
     }
+}
 
-    function saveCurrentProject(silent = false) {
-        if(!currentUser || !currentProjectId) return;
-        users[currentUser].projects[currentProjectId] = elInput.value;
-        localStorage.setItem('sk_ultra_db', JSON.stringify(users));
-        elSaveStatus.innerText = "All changes saved";
-        elSaveStatus.style.color = "var(--green)";
-        if(!silent) alert("Project Saved!");
-    }
 
-    function createNewProject(nameOverride = null, contentOverride = null) {
-        let name = nameOverride || prompt("Filename (.sk):");
-        if (name) {
-            if(!name.endsWith(".sk")) name += ".sk";
-            users[currentUser].projects[name] = contentOverride || "# New Script\n";
-            loadProject(name);
-        }
-    }
+/* =========================================
+   MODULE 2: VIRTUAL FILE SYSTEM
+   ========================================= */
+const VFS_KEY = "skript_ultimate_vfs";
+let vfs = {};
+let currentFile = null;
 
-    function deleteProject(name, e) {
-        e.stopPropagation();
-        if(confirm(`Delete ${name}?`)) {
-            delete users[currentUser].projects[name];
-            const keys = Object.keys(users[currentUser].projects);
-            loadProject(keys.length > 0 ? keys[0] : null);
-        }
-    }
-
-    // --- EDITOR ENGINE ---
-    function onEditorInput() {
-        updateEditor();
-        elSaveStatus.innerText = "Unsaved changes...";
-        elSaveStatus.style.color = "var(--orange)";
-        clearTimeout(saveTimer);
-        saveTimer = setTimeout(() => saveCurrentProject(true), 2000);
-    }
-
-    function updateEditor() {
-        let code = elInput.value;
+function initVFS() {
+    const saved = localStorage.getItem(VFS_KEY);
+    if (saved) {
+        vfs = JSON.parse(saved);
+    } else {
+        // Default Example Files
+        vfs = {
+            "main.sk": `command /hello:
+    trigger:
+        # Syntax highlighting test
+        send "&aHello World!" to player
+        set {_num} to 10
+        add 5 to {_num}
         
-        // Line Numbers
-        const lines = code.split('\n');
-        elGutter.innerHTML = lines.map((_, i) => `<div class="line-number">${i+1}</div>`).join('');
-
-        // Highlighting
-        let h = code.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
-        h = h.replace(/("(?:[^"\\]|\\.)*")/g, '<span class="sk-string">$1</span>');
-        h = h.replace(/(#.*)/g, '<span class="sk-comment">$1</span>');
-        h = h.replace(/(\{_?[\w:]+(\.\*)?\})/g, '<span class="sk-var">$1</span>');
-
-        // Cluster Matching
-        const map = (arr, cls) => {
-            const reg = new RegExp(`\\b(${arr.join('|')})\\b`, 'gi');
-            h = h.replace(reg, `<span class="${cls}">$1</span>`);
-        };
-
-        map(SYNC_CLUSTERS.events, "sk-event");
-        map(SYNC_CLUSTERS.effects, "sk-effect");
-        map(SYNC_CLUSTERS.addons, "sk-gui");
-        map(SYNC_CLUSTERS.expr, "sk-var");
-        map(SYNC_CLUSTERS.cond, "sk-var");
-
-        h = h.replace(/[\(\)\[\]\{\}]/g, '<span class="sk-bracket">$&</span>');
-        
-        elOutput.innerHTML = h + (code.endsWith('\n') ? ' ' : '');
-        document.getElementById('addon-indicator').style.display = SYNC_CLUSTERS.addons.some(k => code.includes(k)) ? 'inline-block' : 'none';
-        syncScroll();
-    }
-
-    function updateCursorPos() {
-        const lines = elInput.value.substr(0, elInput.selectionStart).split("\n");
-        document.getElementById('cursor-pos').innerText = `Ln ${lines.length}, Col ${lines[lines.length-1].length + 1}`;
-    }
-
-    function syncScroll() {
-        elOutput.scrollTop = elInput.scrollTop;
-        elOutput.scrollLeft = elInput.scrollLeft;
-        elGutter.scrollTop = elInput.scrollTop;
-    }
-
-    // Tab & Key Shortcuts
-    elInput.addEventListener('keydown', function(e) {
-        if (e.key === 'Tab') {
-            e.preventDefault();
-            const start = this.selectionStart;
-            this.value = this.value.substring(0, start) + "\t" + this.value.substring(this.selectionEnd);
-            this.selectionStart = this.selectionEnd = start + 1;
-            onEditorInput();
-        }
-        if (e.ctrlKey && e.key === 's') {
-            e.preventDefault();
-            saveCurrentProject(false);
-        }
-    });
-
-    function runSyntaxCheck() {
-        const lines = elInput.value.split('\n');
-        const results = document.getElementById('syntax-results');
-        results.innerHTML = "";
-        let errs = [];
-
-        lines.forEach((l, i) => {
-            const t = l.trim();
-            if (t === "" || t.startsWith("#")) return;
-            // Indent Check
-            if (i > 0 && lines[i-1].trim().endsWith(":") && !l.startsWith("\t") && !l.startsWith("    ")) {
-                errs.push(`Line ${i+1}: Missing indentation after colon.`);
-            }
-            // Logic Check
-            if (t.includes("wait") && t.match(/\d+/) > 60) {
-                errs.push(`Line ${i+1}: Performance Warning - Wait over 60s detected.`);
-            }
-        });
-
-        if (errs.length === 0) results.innerHTML = `<div class="success-msg">✅ Flawless Syntax</div>`;
-        else errs.forEach(e => results.innerHTML += `<div class="error-item">${e}</div>`);
-        
-        document.getElementById('syntax-modal').style.display = "flex";
-    }
-</script>
-</body>
-</html>
+        if {_num} > 10:
+            send "&bBig number: %{_num}%"
+            
+        wait 1 second
+        send "&eDone."`,
+            
+            "
